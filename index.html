@@ -20,6 +20,9 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- PDF.js for PDF parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    
     <!-- React -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -51,6 +54,8 @@
           const [lastDollarAmount, setLastDollarAmount] = useState(0);
           const [deferredPrompt, setDeferredPrompt] = useState(null);
           const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+          const [parsedPayStub, setParsedPayStub] = useState(null);
+          const [isParsingPDF, setIsParsingPDF] = useState(false);
 
           // User settings with localStorage
           const [settings, setSettings] = useState(() => {
@@ -152,6 +157,255 @@
             } catch (e) {
               console.log('Install failed:', e);
             }
+          };
+
+          // Parse PDF pay stub
+          const parsePDFPayStub = async (file) => {
+            setIsParsingPDF(true);
+            try {
+              // Set up PDF.js worker
+              if (typeof pdfjsLib !== 'undefined') {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+              }
+
+              const arrayBuffer = await file.arrayBuffer();
+              const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+              
+              let fullText = '';
+              
+              // Extract text from all pages
+              for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(' ');
+                fullText += pageText + ' ';
+              }
+              
+              console.log('Extracted PDF text:', fullText);
+              
+              // Parse the text for pay stub information
+              const parsed = parsePayStubText(fullText);
+              setParsedPayStub(parsed);
+              
+              return parsed;
+            } catch (error) {
+              console.error('PDF parsing error:', error);
+              alert('Error parsing PDF. Please make sure it\'s a valid pay stub.');
+              return null;
+            } finally {
+              setIsParsingPDF(false);
+            }
+          };
+
+          // Parse pay stub text using regex patterns
+          const parsePayStubText = (text) => {
+            const parsed = {};
+            
+            // Convert to lowercase for easier matching
+            const lowerText = text.toLowerCase();
+            
+            // Pattern for hourly rate (look for rate, hourly, /hr, per hour)
+            const hourlyRatePatterns = [
+              /(?:rate|hourly|\/hr|per\s*hour)[:\s]*\$?(\d+\.?\d*)/gi,
+              /\$(\d+\.?\d*)\s*(?:\/\s*hr|per\s*hour|hourly)/gi,
+              /regular\s*rate[:\s]*\$?(\d+\.?\d*)/gi
+            ];
+            
+            for (const pattern of hourlyRatePatterns) {
+              const match = text.match(pattern);
+              if (match) {
+                const rate = parseFloat(match[0].replace(/[^\d.]/g, ''));
+                if (rate > 5 && rate < 200) { // Reasonable hourly rate range
+                  parsed.hourlyRate = rate;
+                  break;
+                }
+              }
+            }
+
+            // Pattern for federal tax
+            const federalTaxPatterns = [
+              /(?:federal|fed)\s*(?:tax|withholding|w\/h)[:\s]*\$?(\d+\.?\d*)/gi,
+              /fed\s*tax[:\s]*\$?(\d+\.?\d*)/gi,
+              /federal\s*income\s*tax[:\s]*\$?(\d+\.?\d*)/gi
+            ];
+            
+            // Pattern for gross pay to calculate percentages
+            const grossPayPatterns = [
+              /(?:gross|total)\s*(?:pay|earnings)[:\s]*\$?(\d+\.?\d*)/gi,
+              /gross[:\s]*\$?(\d+\.?\d*)/gi
+            ];
+            
+            let grossPay = null;
+            for (const pattern of grossPayPatterns) {
+              const match = text.match(pattern);
+              if (match) {
+                grossPay = parseFloat(match[0].replace(/[^\d.]/g, ''));
+                if (grossPay > 0) break;
+              }
+            }
+
+            // Extract tax amounts and calculate percentages
+            for (const pattern of federalTaxPatterns) {
+              const match = text.match(pattern);
+              if (match && grossPay) {
+                const taxAmount = parseFloat(match[0].replace(/[^\d.]/g, ''));
+                if (taxAmount > 0) {
+                  parsed.federalTaxRate = ((taxAmount / grossPay) * 100).toFixed(1);
+                  break;
+                }
+              }
+            }
+
+            // State tax patterns
+            const stateTaxPatterns = [
+              /(?:state|st)\s*(?:tax|withholding|w\/h)[:\s]*\$?(\d+\.?\d*)/gi,
+              /state\s*income\s*tax[:\s]*\$?(\d+\.?\d*)/gi
+            ];
+            
+            for (const pattern of stateTaxPatterns) {
+              const match = text.match(pattern);
+              if (match && grossPay) {
+                const taxAmount = parseFloat(match[0].replace(/[^\d.]/g, ''));
+                if (taxAmount > 0) {
+                  parsed.stateTaxRate = ((taxAmount / grossPay) * 100).toFixed(1);
+                  break;
+                }
+              }
+            }
+
+            // Social Security patterns
+            const socialSecurityPatterns = [
+              /(?:social\s*security|soc\s*sec|ss\s*tax)[:\s]*\$?(\d+\.?\d*)/gi,
+              /fica[:\s]*\$?(\d+\.?\d*)/gi
+            ];
+            
+            for (const pattern of socialSecurityPatterns) {
+              const match = text.match(pattern);
+              if (match && grossPay) {
+                const taxAmount = parseFloat(match[0].replace(/[^\d.]/g, ''));
+                if (taxAmount > 0) {
+                  parsed.socialSecurityRate = ((taxAmount / grossPay) * 100).toFixed(1);
+                  break;
+                }
+              }
+            }
+
+            // Medicare patterns
+            const medicarePatterns = [
+              /medicare[:\s]*\$?(\d+\.?\d*)/gi,
+              /med\s*tax[:\s]*\$?(\d+\.?\d*)/gi
+            ];
+            
+            for (const pattern of medicarePatterns) {
+              const match = text.match(pattern);
+              if (match && grossPay) {
+                const taxAmount = parseFloat(match[0].replace(/[^\d.]/g, ''));
+                if (taxAmount > 0) {
+                  parsed.medicareRate = ((taxAmount / grossPay) * 100).toFixed(1);
+                  break;
+                }
+              }
+            }
+
+            // Other deductions (401k, health insurance, etc.)
+            const deductionPatterns = [
+              /(?:401k|retirement|health|insurance|dental|vision)[:\s]*\$?(\d+\.?\d*)/gi,
+              /(?:medical|benefits)[:\s]*\$?(\d+\.?\d*)/gi
+            ];
+            
+            let totalDeductions = 0;
+            for (const pattern of deductionPatterns) {
+              const matches = text.match(pattern);
+              if (matches) {
+                matches.forEach(match => {
+                  const amount = parseFloat(match.replace(/[^\d.]/g, ''));
+                  if (amount > 0 && amount < 1000) { // Reasonable deduction range
+                    totalDeductions += amount;
+                  }
+                });
+              }
+            }
+            
+            if (totalDeductions > 0) {
+              parsed.otherDeductions = totalDeductions.toFixed(2);
+            }
+
+            // Look for pay period dates
+            const datePatterns = [
+              /(\d{1,2}\/\d{1,2}\/\d{4})\s*(?:to|-)\s*(\d{1,2}\/\d{1,2}\/\d{4})/gi,
+              /(\d{4}-\d{2}-\d{2})\s*(?:to|-)\s*(\d{4}-\d{2}-\d{2})/gi
+            ];
+            
+            for (const pattern of datePatterns) {
+              const match = text.match(pattern);
+              if (match) {
+                try {
+                  const startDate = new Date(match[1]);
+                  const endDate = new Date(match[2]);
+                  const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+                  
+                  if (daysDiff > 0 && daysDiff <= 31) {
+                    parsed.payPeriodLength = daysDiff;
+                    parsed.payPeriodStartDate = startDate.toISOString().split('T')[0];
+                    break;
+                  }
+                } catch (e) {
+                  console.log('Date parsing error:', e);
+                }
+              }
+            }
+
+            console.log('Parsed pay stub data:', parsed);
+            return parsed;
+          };
+
+          // Handle file upload
+          const handleFileUpload = async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (file.type !== 'application/pdf') {
+              alert('Please upload a PDF file.');
+              return;
+            }
+            
+            await parsePDFPayStub(file);
+          };
+
+          // Apply parsed data to settings
+          const applyParsedData = () => {
+            if (!parsedPayStub) return;
+            
+            const newSettings = { ...settings };
+            
+            if (parsedPayStub.hourlyRate) {
+              newSettings.hourlyRate = parseFloat(parsedPayStub.hourlyRate);
+            }
+            if (parsedPayStub.federalTaxRate) {
+              newSettings.federalTaxRate = parseFloat(parsedPayStub.federalTaxRate);
+            }
+            if (parsedPayStub.stateTaxRate) {
+              newSettings.stateTaxRate = parseFloat(parsedPayStub.stateTaxRate);
+            }
+            if (parsedPayStub.socialSecurityRate) {
+              newSettings.socialSecurityRate = parseFloat(parsedPayStub.socialSecurityRate);
+            }
+            if (parsedPayStub.medicareRate) {
+              newSettings.medicareRate = parseFloat(parsedPayStub.medicareRate);
+            }
+            if (parsedPayStub.otherDeductions) {
+              newSettings.otherDeductions = parseFloat(parsedPayStub.otherDeductions);
+            }
+            if (parsedPayStub.payPeriodLength) {
+              newSettings.payPeriodLength = parseInt(parsedPayStub.payPeriodLength);
+            }
+            if (parsedPayStub.payPeriodStartDate) {
+              newSettings.payPeriodStartDate = parsedPayStub.payPeriodStartDate;
+            }
+            
+            setSettings(newSettings);
+            setParsedPayStub(null);
+            alert('Settings updated from pay stub!');
           };
 
           // Play cha-ching sound effect
