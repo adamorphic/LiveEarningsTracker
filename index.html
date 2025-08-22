@@ -24,19 +24,713 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    
     <!-- Babel for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
     <div id="root"></div>
     
-    <!-- Your React Component -->
+    <!-- React Component -->
     <script type="text/babel">
-        // [PASTE THE REACT COMPONENT CODE FROM THE ARTIFACT HERE]
+        const { useState, useEffect } = React;
         
+        // Lucide icons as components
+        const Clock = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>;
+        const DollarSign = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>;
+        const Target = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>;
+        const TrendingUp = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22,7 13.5,15.5 8.5,10.5 2,17"/><polyline points="16,7 22,7 22,13"/></svg>;
+        const Calendar = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
+        const Settings = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
+        const X = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+        const Download = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+
+        const LiveEarningsTracker = () => {
+          const [currentTime, setCurrentTime] = useState(new Date());
+          const [view, setView] = useState('today');
+          const [showSettings, setShowSettings] = useState(false);
+          const [lastDollarAmount, setLastDollarAmount] = useState(0);
+          const [soundEnabled, setSoundEnabled] = useState(true);
+          const [deferredPrompt, setDeferredPrompt] = useState(null);
+          const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+
+          // User settings with state
+          const [settings, setSettings] = useState({
+            hourlyRate: 19.20,
+            workStartHour: 9,
+            workStartMinute: 30,
+            workEndHour: 18,
+            workEndMinute: 30,
+            lunchStartHour: 13,
+            lunchStartMinute: 0,
+            lunchEndHour: 14,
+            lunchEndMinute: 0,
+            payPeriodStartDate: '2025-08-07',
+            payPeriodLength: 14,
+            federalTaxRate: 12,
+            stateTaxRate: 5,
+            socialSecurityRate: 6.2,
+            medicareRate: 1.45,
+            otherDeductions: 0
+          });
+
+          const WORK_DAYS = [1, 2, 3, 4, 5];
+
+          // Update time every second
+          useEffect(() => {
+            const timer = setInterval(() => {
+              setCurrentTime(new Date());
+            }, 1000);
+            return () => clearInterval(timer);
+          }, []);
+
+          // PWA Installation handling
+          useEffect(() => {
+            // Handle install prompt
+            const handleBeforeInstallPrompt = (e) => {
+              e.preventDefault();
+              setDeferredPrompt(e);
+              setShowInstallPrompt(true);
+            };
+
+            if (typeof window !== 'undefined') {
+              window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            }
+
+            return () => {
+              if (typeof window !== 'undefined') {
+                window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+              }
+            };
+          }, []);
+
+          // Handle PWA installation
+          const handleInstallClick = async () => {
+            if (!deferredPrompt) {
+              // For iOS, show instructions
+              const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+              if (isIOS) {
+                alert('To install on iOS:\n1. Tap the Share button in Safari\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add" to install the app');
+              } else {
+                alert('To install this app:\n1. Look for an install prompt in your browser\n2. Or check your browser menu for "Install App" option');
+              }
+              return;
+            }
+
+            try {
+              deferredPrompt.prompt();
+              const { outcome } = await deferredPrompt.userChoice;
+              
+              if (outcome === 'accepted') {
+                console.log('PWA installed');
+              }
+              
+              setDeferredPrompt(null);
+              setShowInstallPrompt(false);
+            } catch (e) {
+              console.log('Install failed:', e);
+            }
+          };
+
+          // Play cha-ching sound effect
+          const playChaChing = () => {
+            if (!soundEnabled) return;
+            
+            try {
+              const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+              
+              const playNote = (frequency, startTime, duration) => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(frequency, startTime);
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0, startTime);
+                gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+                
+                oscillator.start(startTime);
+                oscillator.stop(startTime + duration);
+              };
+              
+              const now = audioContext.currentTime;
+              playNote(523.25, now, 0.15);
+              playNote(783.99, now + 0.1, 0.25);
+              
+            } catch (error) {
+              console.log('Audio not supported');
+            }
+          };
+
+          // Helper functions
+          const isWorkDay = (date) => WORK_DAYS.includes(date.getDay());
+          
+          const isWorkTime = (date) => {
+            const hours = date.getHours();
+            const minutes = date.getMinutes();
+            const currentMinutes = hours * 60 + minutes;
+            
+            const workStartMinutes = settings.workStartHour * 60 + settings.workStartMinute;
+            const workEndMinutes = settings.workEndHour * 60 + settings.workEndMinute;
+            const lunchStartMinutes = settings.lunchStartHour * 60 + settings.lunchStartMinute;
+            const lunchEndMinutes = settings.lunchEndHour * 60 + settings.lunchEndMinute;
+            
+            return currentMinutes >= workStartMinutes && 
+                   currentMinutes <= workEndMinutes && 
+                   !(currentMinutes >= lunchStartMinutes && currentMinutes < lunchEndMinutes);
+          };
+
+          const getPayPeriodStart = (date) => {
+            const startDate = new Date(settings.payPeriodStartDate);
+            const daysDiff = Math.floor((date - startDate) / (1000 * 60 * 60 * 24));
+            const periodsSince = Math.floor(daysDiff / settings.payPeriodLength);
+            const payPeriodStart = new Date(startDate);
+            payPeriodStart.setDate(startDate.getDate() + (periodsSince * settings.payPeriodLength));
+            payPeriodStart.setHours(settings.workStartHour, settings.workStartMinute, 0, 0);
+            return payPeriodStart;
+          };
+
+          const calculateEarnings = (startDate, endDate = currentTime) => {
+            let totalMinutes = 0;
+            const current = new Date(startDate);
+            
+            while (current <= endDate) {
+              if (isWorkDay(current)) {
+                const dayStart = new Date(current);
+                dayStart.setHours(settings.workStartHour, settings.workStartMinute, 0, 0);
+                
+                const dayEnd = new Date(current);
+                dayEnd.setHours(settings.workEndHour, settings.workEndMinute, 0, 0);
+                
+                const lunchStart = new Date(current);
+                lunchStart.setHours(settings.lunchStartHour, settings.lunchStartMinute, 0, 0);
+                
+                const lunchEnd = new Date(current);
+                lunchEnd.setHours(settings.lunchEndHour, settings.lunchEndMinute, 0, 0);
+                
+                const effectiveStart = current.toDateString() === endDate.toDateString() ? 
+                  new Date(Math.max(dayStart, startDate, current)) : dayStart;
+                const effectiveEnd = current.toDateString() === endDate.toDateString() ? 
+                  new Date(Math.min(dayEnd, endDate)) : dayEnd;
+                
+                if (effectiveStart < effectiveEnd) {
+                  let workMinutes = (effectiveEnd - effectiveStart) / (1000 * 60);
+                  
+                  if (effectiveStart <= lunchEnd && effectiveEnd >= lunchStart) {
+                    const lunchOverlapStart = new Date(Math.max(effectiveStart, lunchStart));
+                    const lunchOverlapEnd = new Date(Math.min(effectiveEnd, lunchEnd));
+                    workMinutes -= (lunchOverlapEnd - lunchOverlapStart) / (1000 * 60);
+                  }
+                  
+                  totalMinutes += Math.max(0, workMinutes);
+                }
+              }
+              current.setDate(current.getDate() + 1);
+              current.setHours(settings.workStartHour, settings.workStartMinute, 0, 0);
+            }
+            
+            return (totalMinutes / 60) * settings.hourlyRate;
+          };
+
+          const calculateAfterTaxEarnings = (grossEarnings) => {
+            const totalTaxRate = (settings.federalTaxRate + settings.stateTaxRate + settings.socialSecurityRate + settings.medicareRate) / 100;
+            const afterTaxEarnings = grossEarnings * (1 - totalTaxRate);
+            return Math.max(0, afterTaxEarnings - (view === 'payPeriod' ? settings.otherDeductions : 0));
+          };
+
+          const getDateRanges = () => {
+            const now = new Date(currentTime);
+            const todayStart = new Date(now);
+            todayStart.setHours(settings.workStartHour, settings.workStartMinute, 0, 0);
+            
+            const weekStart = new Date(now);
+            const daysFromMonday = (now.getDay() + 6) % 7;
+            weekStart.setDate(now.getDate() - daysFromMonday);
+            weekStart.setHours(settings.workStartHour, settings.workStartMinute, 0, 0);
+            
+            const yearStart = new Date(now.getFullYear(), 0, 1);
+            yearStart.setHours(settings.workStartHour, settings.workStartMinute, 0, 0);
+            
+            const payPeriodStart = getPayPeriodStart(now);
+            
+            return { todayStart, weekStart, yearStart, payPeriodStart };
+          };
+
+          const { todayStart, weekStart, yearStart, payPeriodStart } = getDateRanges();
+          
+          const grossEarnings = {
+            today: calculateEarnings(todayStart),
+            week: calculateEarnings(weekStart),
+            year: calculateEarnings(yearStart),
+            payPeriod: calculateEarnings(payPeriodStart)
+          };
+
+          const afterTaxEarnings = {
+            today: calculateAfterTaxEarnings(grossEarnings.today),
+            week: calculateAfterTaxEarnings(grossEarnings.week),
+            year: calculateAfterTaxEarnings(grossEarnings.year),
+            payPeriod: calculateAfterTaxEarnings(grossEarnings.payPeriod)
+          };
+
+          const isCurrentlyEarning = isWorkDay(currentTime) && isWorkTime(currentTime);
+          const earningsPerSecond = settings.hourlyRate / 3600;
+          const afterTaxPerSecond = calculateAfterTaxEarnings(earningsPerSecond);
+
+          // Check for dollar milestones and play sound
+          useEffect(() => {
+            const currentEarnings = afterTaxEarnings[view];
+            const currentDollarAmount = Math.floor(currentEarnings);
+            
+            if (currentDollarAmount > lastDollarAmount && lastDollarAmount > 0 && isCurrentlyEarning) {
+              playChaChing();
+            }
+            
+            setLastDollarAmount(currentDollarAmount);
+          }, [afterTaxEarnings, view, lastDollarAmount, isCurrentlyEarning, soundEnabled]);
+
+          const handleSettingsChange = (field, value) => {
+            setSettings(prev => ({
+              ...prev,
+              [field]: field === 'payPeriodStartDate' ? value : (parseFloat(value) || 0)
+            }));
+          };
+
+          const formatCurrency = (amount) => `$${amount.toFixed(2)}`;
+          
+          const getViewLabel = () => {
+            switch(view) {
+              case 'today': return 'Today';
+              case 'week': return 'This Week';
+              case 'year': return 'This Year';
+              case 'payPeriod': return 'This Pay Period';
+              default: return '';
+            }
+          };
+
+          const formatTime12Hour = (hour, minute) => {
+            const period = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+            return `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
+          };
+
+          return (
+            <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 p-2 sm:p-4">
+              <div className="max-w-4xl mx-auto">
+                {/* Header */}
+                <div className="text-center mb-6 sm:mb-8">
+                  <div className="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-4 mb-4">
+                    <h1 className="text-xl sm:text-2xl md:text-4xl font-bold text-gray-800">💰 Live Earnings Tracker</h1>
+                    <div className="flex space-x-2">
+                      {showInstallPrompt && (
+                        <button
+                          onClick={handleInstallClick}
+                          className="p-2 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600 transition-colors"
+                          title="Install App"
+                        >
+                          <Download size={20} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setShowSettings(!showSettings)}
+                        className="p-2 bg-white rounded-lg shadow-md hover:bg-gray-50 transition-colors"
+                      >
+                        <Settings size={20} />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-sm sm:text-base text-gray-600">Watch your money grow in real-time!</p>
+                  {showInstallPrompt && (
+                    <div className="mt-2 p-2 bg-blue-50 rounded-lg">
+                      <p className="text-xs sm:text-sm text-blue-800">
+                        📱 Install this app for the best experience! Click the download button above.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Settings Panel */}
+                {showSettings && (
+                  <div className="bg-white rounded-lg shadow-lg p-3 sm:p-6 mb-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-lg sm:text-2xl font-bold text-gray-800">⚙️ Settings</h2>
+                      <button
+                        onClick={() => setShowSettings(false)}
+                        className="p-1 hover:bg-gray-100 rounded"
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                      <div>
+                        <h3 className="text-base sm:text-lg font-semibold mb-3 text-blue-600">💼 Work Settings</h3>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Hourly Rate ($)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={settings.hourlyRate}
+                              onChange={(e) => handleSettingsChange('hourlyRate', e.target.value)}
+                              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Pay Period Start Date</label>
+                            <input
+                              type="date"
+                              value={settings.payPeriodStartDate}
+                              onChange={(e) => handleSettingsChange('payPeriodStartDate', e.target.value)}
+                              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">First day of any recent pay period</p>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Pay Period Length (days)</label>
+                            <select
+                              value={settings.payPeriodLength}
+                              onChange={(e) => handleSettingsChange('payPeriodLength', e.target.value)}
+                              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                              <option value={7}>Weekly (7 days)</option>
+                              <option value={14}>Bi-weekly (14 days)</option>
+                              <option value={15}>Semi-monthly (15 days)</option>
+                              <option value={30}>Monthly (30 days)</option>
+                            </select>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Work Start</label>
+                              <div className="flex space-x-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="23"
+                                  value={settings.workStartHour}
+                                  onChange={(e) => handleSettingsChange('workStartHour', e.target.value)}
+                                  className="w-12 p-2 border border-gray-300 rounded-md text-center text-sm"
+                                />
+                                <span className="self-center text-sm">:</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="59"
+                                  value={settings.workStartMinute}
+                                  onChange={(e) => handleSettingsChange('workStartMinute', e.target.value)}
+                                  className="w-12 p-2 border border-gray-300 rounded-md text-center text-sm"
+                                />
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {formatTime12Hour(settings.workStartHour, settings.workStartMinute)}
+                              </p>
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Work End</label>
+                              <div className="flex space-x-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="23"
+                                  value={settings.workEndHour}
+                                  onChange={(e) => handleSettingsChange('workEndHour', e.target.value)}
+                                  className="w-12 p-2 border border-gray-300 rounded-md text-center text-sm"
+                                />
+                                <span className="self-center text-sm">:</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="59"
+                                  value={settings.workEndMinute}
+                                  onChange={(e) => handleSettingsChange('workEndMinute', e.target.value)}
+                                  className="w-12 p-2 border border-gray-300 rounded-md text-center text-sm"
+                                />
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {formatTime12Hour(settings.workEndHour, settings.workEndMinute)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Lunch Start</label>
+                              <div className="flex space-x-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="23"
+                                  value={settings.lunchStartHour}
+                                  onChange={(e) => handleSettingsChange('lunchStartHour', e.target.value)}
+                                  className="w-12 p-2 border border-gray-300 rounded-md text-center text-sm"
+                                />
+                                <span className="self-center text-sm">:</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="59"
+                                  value={settings.lunchStartMinute}
+                                  onChange={(e) => handleSettingsChange('lunchStartMinute', e.target.value)}
+                                  className="w-12 p-2 border border-gray-300 rounded-md text-center text-sm"
+                                />
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Lunch End</label>
+                              <div className="flex space-x-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="23"
+                                  value={settings.lunchEndHour}
+                                  onChange={(e) => handleSettingsChange('lunchEndHour', e.target.value)}
+                                  className="w-12 p-2 border border-gray-300 rounded-md text-center text-sm"
+                                />
+                                <span className="self-center text-sm">:</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="59"
+                                  value={settings.lunchEndMinute}
+                                  onChange={(e) => handleSettingsChange('lunchEndMinute', e.target.value)}
+                                  className="w-12 p-2 border border-gray-300 rounded-md text-center text-sm"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 className="text-base sm:text-lg font-semibold mb-3 text-red-600">🧾 Tax & Deductions (%)</h3>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Federal Tax (%)</label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={settings.federalTaxRate}
+                              onChange={(e) => handleSettingsChange('federalTaxRate', e.target.value)}
+                              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">State Tax (%)</label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={settings.stateTaxRate}
+                              onChange={(e) => handleSettingsChange('stateTaxRate', e.target.value)}
+                              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Social Security (%)</label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={settings.socialSecurityRate}
+                              onChange={(e) => handleSettingsChange('socialSecurityRate', e.target.value)}
+                              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Medicare (%)</label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={settings.medicareRate}
+                              onChange={(e) => handleSettingsChange('medicareRate', e.target.value)}
+                              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Other Deductions ($ per pay period)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={settings.otherDeductions}
+                              onChange={(e) => handleSettingsChange('otherDeductions', e.target.value)}
+                              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Health insurance, 401k, etc.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Status Bar */}
+                <div className="bg-white rounded-lg shadow-lg p-3 sm:p-6 mb-6">
+                  <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-3 h-3 rounded-full ${isCurrentlyEarning ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+                      <span className="text-sm sm:text-lg font-medium text-center">
+                        {isCurrentlyEarning ? '🚀 Currently Earning!' : '⏸️ Off the Clock'}
+                      </span>
+                    </div>
+                    
+                    {isCurrentlyEarning && (
+                      <div className="text-center">
+                        <div className="text-green-600 font-bold text-xs sm:text-sm">
+                          Gross: +{formatCurrency(earningsPerSecond)}/sec
+                        </div>
+                        <div className="text-blue-600 font-bold text-xs">
+                          Take-home: +{formatCurrency(afterTaxPerSecond)}/sec
+                        </div>
+                      </div>
+                    )}
+                    
+                    <button
+                      onClick={() => setSoundEnabled(!soundEnabled)}
+                      className={`p-2 rounded-lg transition-colors ${
+                        soundEnabled 
+                          ? 'bg-green-100 text-green-600 hover:bg-green-200' 
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                      title={soundEnabled ? 'Sound ON - Click to disable' : 'Sound OFF - Click to enable'}
+                    >
+                      <span className="text-sm">{soundEnabled ? '🔊' : '🔇'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* View Selection */}
+                <div className="flex flex-wrap justify-center gap-1 sm:gap-3 mb-6">
+                  {[
+                    { key: 'today', label: 'Today', short: 'Today', icon: Clock },
+                    { key: 'week', label: 'This Week', short: 'Week', icon: Calendar },
+                    { key: 'year', label: 'This Year', short: 'Year', icon: TrendingUp },
+                    { key: 'payPeriod', label: 'Pay Period', short: 'Pay', icon: Target }
+                  ].map(({ key, label, short, icon: Icon }) => (
+                    <button
+                      key={key}
+                      onClick={() => setView(key)}
+                      className={`flex items-center space-x-1 px-2 sm:px-4 py-2 rounded-lg font-medium transition-all text-xs sm:text-sm ${
+                        view === key 
+                          ? 'bg-green-500 text-white shadow-lg' 
+                          : 'bg-white text-gray-700 hover:bg-green-50'
+                      }`}
+                    >
+                      <Icon />
+                      <span className="hidden sm:inline">{label}</span>
+                      <span className="sm:hidden">{short}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Main Earnings Display */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6">
+                  <div className="bg-white rounded-lg shadow-lg p-4 sm:p-8">
+                    <div className="text-center">
+                      <h2 className="text-base sm:text-xl font-bold text-gray-700 mb-2">💰 Gross {getViewLabel()} Earnings</h2>
+                      <div className="text-xl sm:text-3xl md:text-4xl font-bold text-green-600 mb-2">
+                        {formatCurrency(grossEarnings[view])}
+                      </div>
+                      <p className="text-gray-600 text-xs sm:text-sm">Before taxes & deductions</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-lg shadow-lg p-4 sm:p-8">
+                    <div className="text-center">
+                      <h2 className="text-base sm:text-xl font-bold text-gray-700 mb-2">💳 Take-Home {getViewLabel()} Earnings</h2>
+                      <div className="text-xl sm:text-3xl md:text-4xl font-bold text-blue-600 mb-2">
+                        {formatCurrency(afterTaxEarnings[view])}
+                      </div>
+                      <p className="text-gray-600 text-xs sm:text-sm">After taxes & deductions</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Current Time */}
+                <div className="text-center mb-6">
+                  <p className="text-gray-600 text-sm">
+                    Current time: {currentTime.toLocaleTimeString()}
+                  </p>
+                </div>
+
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-6">
+                  <div className="bg-white rounded-lg shadow-lg p-3 sm:p-6">
+                    <div className="flex items-center space-x-2 sm:space-x-3 mb-3">
+                      <DollarSign size={18} />
+                      <h3 className="text-sm sm:text-lg font-semibold">Hourly Rate</h3>
+                    </div>
+                    <p className="text-lg sm:text-2xl font-bold text-blue-600">{formatCurrency(settings.hourlyRate)}</p>
+                    <p className="text-xs sm:text-sm text-gray-600">Gross pay per hour</p>
+                  </div>
+
+                  <div className="bg-white rounded-lg shadow-lg p-3 sm:p-6">
+                    <div className="flex items-center space-x-2 sm:space-x-3 mb-3">
+                      <Target size={18} />
+                      <h3 className="text-sm sm:text-lg font-semibold">Tax Rate</h3>
+                    </div>
+                    <p className="text-lg sm:text-2xl font-bold text-purple-600">
+                      {(settings.federalTaxRate + settings.stateTaxRate + settings.socialSecurityRate + settings.medicareRate).toFixed(1)}%
+                    </p>
+                    <p className="text-xs sm:text-sm text-gray-600">Total tax burden</p>
+                  </div>
+
+                  <div className="bg-white rounded-lg shadow-lg p-3 sm:p-6 sm:col-span-2 lg:col-span-1">
+                    <div className="flex items-center space-x-2 sm:space-x-3 mb-3">
+                      <TrendingUp size={18} />
+                      <h3 className="text-sm sm:text-lg font-semibold">Take-Home Rate</h3>
+                    </div>
+                    <p className="text-lg sm:text-2xl font-bold text-orange-600">
+                      {formatCurrency(settings.hourlyRate * (1 - (settings.federalTaxRate + settings.stateTaxRate + settings.socialSecurityRate + settings.medicareRate) / 100))}
+                    </p>
+                    <p className="text-xs sm:text-sm text-gray-600">After-tax per hour</p>
+                  </div>
+                </div>
+
+                {/* Earnings Breakdown */}
+                <div className="bg-white rounded-lg shadow-lg p-3 sm:p-6">
+                  <h3 className="text-sm sm:text-lg font-semibold mb-4">💡 Earnings Breakdown</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm">
+                    <div>
+                      <strong>Gross Earnings per:</strong><br/>
+                      • {formatCurrency(earningsPerSecond)} per second<br/>
+                      • {formatCurrency(earningsPerSecond * 60)} per minute<br/>
+                      • {formatCurrency(settings.hourlyRate)} per hour
+                    </div>
+                    <div>
+                      <strong>Take-Home Earnings per:</strong><br/>
+                      • {formatCurrency(afterTaxPerSecond)} per second<br/>
+                      • {formatCurrency(afterTaxPerSecond * 60)} per minute<br/>
+                      • {formatCurrency(settings.hourlyRate * (1 - (settings.federalTaxRate + settings.stateTaxRate + settings.socialSecurityRate + settings.medicareRate) / 100))} per hour
+                    </div>
+                  </div>
+                  <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
+                    <p className="text-xs sm:text-sm text-yellow-800">
+                      <strong>🔊 Sound Effects:</strong> You'll hear a satisfying "cha-ching" sound every time you earn another dollar! 
+                      {soundEnabled ? ' Sound is currently enabled.' : ' Sound is currently disabled.'} 
+                      Click the {soundEnabled ? '🔊' : '🔇'} button above to toggle.
+                    </p>
+                  </div>
+                  
+                  <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                    <p className="text-xs sm:text-sm text-blue-800">
+                      <strong>📱 Install as App:</strong> On iOS Safari, tap the Share button and select "Add to Home Screen" to install this as a standalone app on your device!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
         ReactDOM.render(<LiveEarningsTracker />, document.getElementById('root'));
     </script>
     
