@@ -1,24 +1,4 @@
-// Save settings to localStorage whenever they change
-          useEffect(() => {
-            localStorage.setItem('earningsTrackerSettings', JSON.stringify(settings));
-          }, [settings]);
-
-          // Also save sound preference
-          // Also save sound preference
-          const [soundEnabled, setSoundEnabled] = useState(() => {
-            const savedSound = localStorage.getItem('earningsTrackerSound');
-            return savedSound !== null ? JSON.parse(savedSound) : true;
-          });
-
-          // Save sound preference
-          useEffect(() => {
-            localStorage.setItem('earningsTrackerSound', JSON.stringify(soundEnabled));
-          }, [soundEnabled]);
-
-          // Save sound preference
-          useEffect(() => {
-            localStorage.setItem('earningsTrackerSound', JSON.stringify(soundEnabled));
-          }, [soundEnabled]);<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -35,7 +15,7 @@
     <meta name="theme-color" content="#10b981">
     
     <!-- iOS icon -->
-    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="apple-touch-icon" href="android-chrome-192x192.png">
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -69,13 +49,11 @@
           const [view, setView] = useState('today');
           const [showSettings, setShowSettings] = useState(false);
           const [lastDollarAmount, setLastDollarAmount] = useState(0);
-          const [soundEnabled, setSoundEnabled] = useState(true);
           const [deferredPrompt, setDeferredPrompt] = useState(null);
           const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
-          // User settings with state
+          // User settings with localStorage
           const [settings, setSettings] = useState(() => {
-            // Load saved settings from localStorage or use defaults
             const savedSettings = localStorage.getItem('earningsTrackerSettings');
             if (savedSettings) {
               try {
@@ -84,7 +62,6 @@
                 console.log('Error loading saved settings:', e);
               }
             }
-            // Default settings if nothing saved
             return {
               hourlyRate: 19.20,
               workStartHour: 9,
@@ -105,7 +82,23 @@
             };
           });
 
+          // Sound preference with localStorage
+          const [soundEnabled, setSoundEnabled] = useState(() => {
+            const savedSound = localStorage.getItem('earningsTrackerSound');
+            return savedSound !== null ? JSON.parse(savedSound) : true;
+          });
+
           const WORK_DAYS = [1, 2, 3, 4, 5];
+
+          // Save settings to localStorage whenever they change
+          useEffect(() => {
+            localStorage.setItem('earningsTrackerSettings', JSON.stringify(settings));
+          }, [settings]);
+
+          // Save sound preference
+          useEffect(() => {
+            localStorage.setItem('earningsTrackerSound', JSON.stringify(soundEnabled));
+          }, [soundEnabled]);
 
           // Update time every second
           useEffect(() => {
@@ -117,7 +110,6 @@
 
           // PWA Installation handling
           useEffect(() => {
-            // Handle install prompt
             const handleBeforeInstallPrompt = (e) => {
               e.preventDefault();
               setDeferredPrompt(e);
@@ -138,7 +130,6 @@
           // Handle PWA installation
           const handleInstallClick = async () => {
             if (!deferredPrompt) {
-              // For iOS, show instructions
               const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
               if (isIOS) {
                 alert('To install on iOS:\n1. Tap the Share button in Safari\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add" to install the app');
