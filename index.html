@@ -208,121 +208,178 @@
             const hourlyRatePatterns = [
               /(?:rate|hourly|\/hr|per\s*hour)[:\s]*\$?(\d+\.?\d*)/gi,
               /\$(\d+\.?\d*)\s*(?:\/\s*hr|per\s*hour|hourly)/gi,
-              /regular\s*rate[:\s]*\$?(\d+\.?\d*)/gi
+              /regular\s*rate[:\s]*\$?(\d+\.?\d*)/gi,
+              /base\s*rate[:\s]*\$?(\d+\.?\d*)/gi,
+              /pay\s*rate[:\s]*\$?(\d+\.?\d*)/gi,
+              // Look for patterns like "40.00 hrs @ $25.50"
+              /(\d+\.?\d*)\s*hrs?\s*@\s*\$(\d+\.?\d*)/gi,
+              /(\d+\.?\d*)\s*hours?\s*@\s*\$(\d+\.?\d*)/gi,
+              // Look for rate in tables or structured data
+              /\$(\d+\.?\d*)\s*\/\s*hr/gi,
+              /hourly:\s*\$?(\d+\.?\d*)/gi
             ];
             
             for (const pattern of hourlyRatePatterns) {
-              const match = text.match(pattern);
-              if (match) {
-                const rate = parseFloat(match[0].replace(/[^\d.]/g, ''));
-                if (rate > 5 && rate < 200) { // Reasonable hourly rate range
-                  parsed.hourlyRate = rate;
-                  break;
+              const matches = [...text.matchAll(pattern)];
+              for (const match of matches) {
+                // For patterns that capture hours and rate separately
+                if (match.length > 2 && match[2]) {
+                  const rate = parseFloat(match[2]);
+                  if (rate > 5 && rate < 200) {
+                    parsed.hourlyRate = rate;
+                    break;
+                  }
+                } else {
+                  const rate = parseFloat(match[1]);
+                  if (rate > 5 && rate < 200) {
+                    parsed.hourlyRate = rate;
+                    break;
+                  }
                 }
               }
+              if (parsed.hourlyRate) break;
             }
 
-            // Pattern for federal tax
+            // More flexible patterns for federal tax
             const federalTaxPatterns = [
-              /(?:federal|fed)\s*(?:tax|withholding|w\/h)[:\s]*\$?(\d+\.?\d*)/gi,
+              /(?:federal|fed)\s*(?:tax|withholding|w\/h|income)[:\s]*\$?(\d+\.?\d*)/gi,
               /fed\s*tax[:\s]*\$?(\d+\.?\d*)/gi,
-              /federal\s*income\s*tax[:\s]*\$?(\d+\.?\d*)/gi
+              /federal\s*income\s*tax[:\s]*\$?(\d+\.?\d*)/gi,
+              /fit[:\s]*\$?(\d+\.?\d*)/gi, // Federal Income Tax abbreviation
+              /federal[:\s]*\$?(\d+\.?\d*)/gi,
+              /fed[:\s]*\$?(\d+\.?\d*)/gi,
+              /us\s*tax[:\s]*\$?(\d+\.?\d*)/gi
             ];
             
-            // Pattern for gross pay to calculate percentages
+            // More flexible patterns for gross pay
             const grossPayPatterns = [
-              /(?:gross|total)\s*(?:pay|earnings)[:\s]*\$?(\d+\.?\d*)/gi,
-              /gross[:\s]*\$?(\d+\.?\d*)/gi
+              /(?:gross|total)\s*(?:pay|earnings|wages)[:\s]*\$?(\d+\.?\d*)/gi,
+              /gross[:\s]*\$?(\d+\.?\d*)/gi,
+              /total\s*earnings[:\s]*\$?(\d+\.?\d*)/gi,
+              /total\s*wages[:\s]*\$?(\d+\.?\d*)/gi,
+              /current\s*gross[:\s]*\$?(\d+\.?\d*)/gi,
+              /period\s*gross[:\s]*\$?(\d+\.?\d*)/gi
             ];
             
             let grossPay = null;
             for (const pattern of grossPayPatterns) {
-              const match = text.match(pattern);
-              if (match) {
-                grossPay = parseFloat(match[0].replace(/[^\d.]/g, ''));
-                if (grossPay > 0) break;
-              }
-            }
-
-            // Extract tax amounts and calculate percentages
-            for (const pattern of federalTaxPatterns) {
-              const match = text.match(pattern);
-              if (match && grossPay) {
-                const taxAmount = parseFloat(match[0].replace(/[^\d.]/g, ''));
-                if (taxAmount > 0) {
-                  parsed.federalTaxRate = ((taxAmount / grossPay) * 100).toFixed(1);
+              const matches = [...text.matchAll(pattern)];
+              for (const match of matches) {
+                const amount = parseFloat(match[1]);
+                if (amount > 0 && amount < 50000) { // Reasonable gross pay range per period
+                  grossPay = amount;
                   break;
                 }
               }
+              if (grossPay) break;
             }
 
-            // State tax patterns
+            console.log('Found gross pay:', grossPay);
+
+            // Extract federal tax amounts and calculate percentages
+            for (const pattern of federalTaxPatterns) {
+              const matches = [...text.matchAll(pattern)];
+              for (const match of matches) {
+                const taxAmount = parseFloat(match[1]);
+                if (taxAmount > 0 && grossPay && taxAmount < grossPay) {
+                  const rate = ((taxAmount / grossPay) * 100);
+                  if (rate > 0 && rate < 50) { // Reasonable tax rate
+                    parsed.federalTaxRate = rate.toFixed(1);
+                    break;
+                  }
+                }
+              }
+              if (parsed.federalTaxRate) break;
+            }
+
+            // More flexible state tax patterns
             const stateTaxPatterns = [
-              /(?:state|st)\s*(?:tax|withholding|w\/h)[:\s]*\$?(\d+\.?\d*)/gi,
-              /state\s*income\s*tax[:\s]*\$?(\d+\.?\d*)/gi
+              /(?:state|st)\s*(?:tax|withholding|w\/h|income)[:\s]*\$?(\d+\.?\d*)/gi,
+              /state\s*income\s*tax[:\s]*\$?(\d+\.?\d*)/gi,
+              /sit[:\s]*\$?(\d+\.?\d*)/gi, // State Income Tax abbreviation
+              /state[:\s]*\$?(\d+\.?\d*)/gi,
+              /st\s*tax[:\s]*\$?(\d+\.?\d*)/gi
             ];
             
             for (const pattern of stateTaxPatterns) {
-              const match = text.match(pattern);
-              if (match && grossPay) {
-                const taxAmount = parseFloat(match[0].replace(/[^\d.]/g, ''));
-                if (taxAmount > 0) {
-                  parsed.stateTaxRate = ((taxAmount / grossPay) * 100).toFixed(1);
-                  break;
+              const matches = [...text.matchAll(pattern)];
+              for (const match of matches) {
+                const taxAmount = parseFloat(match[1]);
+                if (taxAmount > 0 && grossPay && taxAmount < grossPay) {
+                  const rate = ((taxAmount / grossPay) * 100);
+                  if (rate > 0 && rate < 30) { // Reasonable state tax rate
+                    parsed.stateTaxRate = rate.toFixed(1);
+                    break;
+                  }
                 }
               }
+              if (parsed.stateTaxRate) break;
             }
 
-            // Social Security patterns
+            // More flexible Social Security patterns
             const socialSecurityPatterns = [
-              /(?:social\s*security|soc\s*sec|ss\s*tax)[:\s]*\$?(\d+\.?\d*)/gi,
-              /fica[:\s]*\$?(\d+\.?\d*)/gi
+              /(?:social\s*security|soc\s*sec|ss\s*tax|oasdi)[:\s]*\$?(\d+\.?\d*)/gi,
+              /fica[:\s]*\$?(\d+\.?\d*)/gi,
+              /ss[:\s]*\$?(\d+\.?\d*)/gi,
+              /soc\s*sec[:\s]*\$?(\d+\.?\d*)/gi
             ];
             
             for (const pattern of socialSecurityPatterns) {
-              const match = text.match(pattern);
-              if (match && grossPay) {
-                const taxAmount = parseFloat(match[0].replace(/[^\d.]/g, ''));
-                if (taxAmount > 0) {
-                  parsed.socialSecurityRate = ((taxAmount / grossPay) * 100).toFixed(1);
-                  break;
+              const matches = [...text.matchAll(pattern)];
+              for (const match of matches) {
+                const taxAmount = parseFloat(match[1]);
+                if (taxAmount > 0 && grossPay && taxAmount < grossPay) {
+                  const rate = ((taxAmount / grossPay) * 100);
+                  if (rate > 4 && rate < 8) { // SS rate should be around 6.2%
+                    parsed.socialSecurityRate = rate.toFixed(1);
+                    break;
+                  }
                 }
               }
+              if (parsed.socialSecurityRate) break;
             }
 
-            // Medicare patterns
+            // More flexible Medicare patterns
             const medicarePatterns = [
               /medicare[:\s]*\$?(\d+\.?\d*)/gi,
-              /med\s*tax[:\s]*\$?(\d+\.?\d*)/gi
+              /med\s*tax[:\s]*\$?(\d+\.?\d*)/gi,
+              /medicare\s*tax[:\s]*\$?(\d+\.?\d*)/gi,
+              /med[:\s]*\$?(\d+\.?\d*)/gi
             ];
             
             for (const pattern of medicarePatterns) {
-              const match = text.match(pattern);
-              if (match && grossPay) {
-                const taxAmount = parseFloat(match[0].replace(/[^\d.]/g, ''));
-                if (taxAmount > 0) {
-                  parsed.medicareRate = ((taxAmount / grossPay) * 100).toFixed(1);
-                  break;
+              const matches = [...text.matchAll(pattern)];
+              for (const match of matches) {
+                const taxAmount = parseFloat(match[1]);
+                if (taxAmount > 0 && grossPay && taxAmount < grossPay) {
+                  const rate = ((taxAmount / grossPay) * 100);
+                  if (rate > 0.5 && rate < 3) { // Medicare rate should be around 1.45%
+                    parsed.medicareRate = rate.toFixed(1);
+                    break;
+                  }
                 }
               }
+              if (parsed.medicareRate) break;
             }
 
-            // Other deductions (401k, health insurance, etc.)
+            // More flexible deduction patterns
             const deductionPatterns = [
-              /(?:401k|retirement|health|insurance|dental|vision)[:\s]*\$?(\d+\.?\d*)/gi,
-              /(?:medical|benefits)[:\s]*\$?(\d+\.?\d*)/gi
+              /(?:401k|retirement|pension)[:\s]*\$?(\d+\.?\d*)/gi,
+              /(?:health|medical|insurance|dental|vision)[:\s]*\$?(\d+\.?\d*)/gi,
+              /(?:benefits|benefit)[:\s]*\$?(\d+\.?\d*)/gi,
+              /(?:life\s*insurance|life\s*ins)[:\s]*\$?(\d+\.?\d*)/gi,
+              /(?:parking|transit|commuter)[:\s]*\$?(\d+\.?\d*)/gi,
+              /(?:union|dues)[:\s]*\$?(\d+\.?\d*)/gi
             ];
             
             let totalDeductions = 0;
             for (const pattern of deductionPatterns) {
-              const matches = text.match(pattern);
-              if (matches) {
-                matches.forEach(match => {
-                  const amount = parseFloat(match.replace(/[^\d.]/g, ''));
-                  if (amount > 0 && amount < 1000) { // Reasonable deduction range
-                    totalDeductions += amount;
-                  }
-                });
+              const matches = [...text.matchAll(pattern)];
+              for (const match of matches) {
+                const amount = parseFloat(match[1]);
+                if (amount > 0 && amount < 2000) { // Reasonable deduction range
+                  totalDeductions += amount;
+                }
               }
             }
             
@@ -330,19 +387,21 @@
               parsed.otherDeductions = totalDeductions.toFixed(2);
             }
 
-            // Look for pay period dates
+            // More flexible date patterns
             const datePatterns = [
-              /(\d{1,2}\/\d{1,2}\/\d{4})\s*(?:to|-)\s*(\d{1,2}\/\d{1,2}\/\d{4})/gi,
-              /(\d{4}-\d{2}-\d{2})\s*(?:to|-)\s*(\d{4}-\d{2}-\d{2})/gi
+              /(\d{1,2}\/\d{1,2}\/\d{4})\s*(?:to|-|through)\s*(\d{1,2}\/\d{1,2}\/\d{4})/gi,
+              /(\d{4}-\d{2}-\d{2})\s*(?:to|-|through)\s*(\d{4}-\d{2}-\d{2})/gi,
+              /pay\s*period[:\s]*(\d{1,2}\/\d{1,2}\/\d{4})\s*(?:to|-|through)\s*(\d{1,2}\/\d{1,2}\/\d{4})/gi,
+              /period[:\s]*(\d{1,2}\/\d{1,2}\/\d{4})\s*(?:to|-|through)\s*(\d{1,2}\/\d{1,2}\/\d{4})/gi
             ];
             
             for (const pattern of datePatterns) {
-              const match = text.match(pattern);
-              if (match) {
+              const matches = [...text.matchAll(pattern)];
+              for (const match of matches) {
                 try {
                   const startDate = new Date(match[1]);
                   const endDate = new Date(match[2]);
-                  const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+                  const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
                   
                   if (daysDiff > 0 && daysDiff <= 31) {
                     parsed.payPeriodLength = daysDiff;
@@ -353,6 +412,7 @@
                   console.log('Date parsing error:', e);
                 }
               }
+              if (parsed.payPeriodLength) break;
             }
 
             console.log('Parsed pay stub data:', parsed);
