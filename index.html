@@ -17,36 +17,8 @@
     <!-- iOS icon -->
     <link rel="apple-touch-icon" href="android-chrome-192x192.png">
     
-    <!-- Tailwind CSS with custom Apple styles -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              'ios-blue': '#007AFF',
-              'ios-gray': '#F2F2F7',
-              'ios-gray-dark': '#8E8E93',
-              'ios-green': '#34C759',
-              'ios-red': '#FF3B30',
-              'ios-orange': '#FF9500',
-              'ios-purple': '#AF52DE',
-              'ios-system-bg': '#FFFFFF',
-              'ios-secondary-bg': '#F2F2F7',
-              'ios-tertiary-bg': '#FFFFFF',
-              'ios-separator': '#C6C6C8'
-            },
-            fontFamily: {
-              'sf': ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'SF Pro Text', 'system-ui', 'sans-serif']
-            },
-            borderRadius: {
-              'ios': '10px',
-              'ios-lg': '16px'
-            }
-          }
-        }
-      }
-    </script>
     
     <!-- React -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -368,43 +340,43 @@
           };
 
           return (
-            <div className="min-h-screen bg-ios-secondary-bg font-sf">
-              <div className="max-w-md mx-auto bg-ios-system-bg">
+            <div className="min-h-screen bg-gray-50" style={{fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif'}}>
+              <div className="max-w-sm mx-auto bg-white min-h-screen">
                 {/* Status Bar Space */}
-                <div className="h-12"></div>
+                <div className="h-12 bg-white"></div>
                 
-                {/* Navigation Header */}
-                <div className="bg-ios-system-bg border-b border-ios-separator px-4 py-3">
+                {/* Header */}
+                <div className="bg-white border-b border-gray-200 px-4 py-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="text-2xl">💰</div>
                       <div>
                         <h1 className="text-lg font-semibold text-black">Earnings</h1>
-                        <p className="text-xs text-ios-gray-dark">Live Tracker</p>
+                        <p className="text-xs text-gray-500">Live Tracker</p>
                       </div>
                     </div>
                     <button
                       onClick={() => setShowSettings(!showSettings)}
-                      className="w-8 h-8 rounded-full bg-ios-gray flex items-center justify-center"
+                      className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"
                     >
-                      <Settings size={18} className="text-ios-gray-dark" />
+                      <Settings size={18} className="text-gray-600" />
                     </button>
                   </div>
                 </div>
 
                 {/* Status Card */}
-                <div className="mx-4 mt-4 bg-ios-system-bg rounded-ios-lg shadow-sm border border-ios-separator">
+                <div className="mx-4 mt-4 bg-white rounded-xl shadow-sm border border-gray-200">
                   <div className="p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-2">
-                        <div className={`w-2 h-2 rounded-full ${isCurrentlyEarning ? 'bg-ios-green' : 'bg-ios-gray-dark'}`}></div>
+                        <div className={`w-2 h-2 rounded-full ${isCurrentlyEarning ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                         <span className="text-sm font-medium text-black">
                           {isCurrentlyEarning ? 'On the Clock' : 'Off the Clock'}
                         </span>
                       </div>
                       <button
                         onClick={() => setSoundEnabled(!soundEnabled)}
-                        className="w-8 h-8 rounded-full bg-ios-gray flex items-center justify-center"
+                        className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"
                       >
                         <span className="text-sm">{soundEnabled ? '🔊' : '🔇'}</span>
                       </button>
@@ -412,10 +384,10 @@
                     
                     {isCurrentlyEarning && (
                       <div className="space-y-1">
-                        <div className="text-xs text-ios-gray-dark">
+                        <div className="text-xs text-gray-500">
                           +{formatCurrency(afterTaxPerSecond)}/sec take-home
                         </div>
-                        <div className="text-xs text-ios-gray-dark">
+                        <div className="text-xs text-gray-500">
                           +{formatCurrency(earningsPerSecond)}/sec gross
                         </div>
                       </div>
@@ -425,7 +397,7 @@
 
                 {/* Time Period Selector */}
                 <div className="mx-4 mt-4">
-                  <div className="bg-ios-gray rounded-ios p-1 flex">
+                  <div className="bg-gray-100 rounded-lg p-1 flex">
                     {[
                       { key: 'today', label: 'Today' },
                       { key: 'week', label: 'Week' },
@@ -435,10 +407,10 @@
                       <button
                         key={key}
                         onClick={() => setView(key)}
-                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                        className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
                           view === key 
-                            ? 'bg-ios-system-bg text-black shadow-sm' 
-                            : 'text-ios-gray-dark'
+                            ? 'bg-white text-black shadow-sm' 
+                            : 'text-gray-600'
                         }`}
                       >
                         {label}
@@ -449,62 +421,56 @@
 
                 {/* Earnings Cards */}
                 <div className="mx-4 mt-4 space-y-3">
-                  <div className="bg-ios-system-bg rounded-ios-lg shadow-sm border border-ios-separator">
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200">
                     <div className="p-4">
-                      <div className="text-xs text-ios-gray-dark mb-1">GROSS {getViewLabel().toUpperCase()}</div>
+                      <div className="text-xs text-gray-500 mb-1 uppercase font-medium tracking-wide">GROSS {getViewLabel().toUpperCase()}</div>
                       <div className="text-2xl font-bold text-black mb-1">
                         {formatCurrency(grossEarnings[view])}
                       </div>
-                      <div className="text-xs text-ios-gray-dark">Before taxes & deductions</div>
+                      <div className="text-xs text-gray-500">Before taxes & deductions</div>
                     </div>
                   </div>
 
-                  <div className="bg-ios-system-bg rounded-ios-lg shadow-sm border border-ios-separator">
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200">
                     <div className="p-4">
-                      <div className="text-xs text-ios-blue font-medium mb-1">TAKE-HOME {getViewLabel().toUpperCase()}</div>
-                      <div className="text-2xl font-bold text-ios-blue mb-1">
+                      <div className="text-xs font-medium mb-1 uppercase tracking-wide" style={{color: '#007AFF'}}>TAKE-HOME {getViewLabel().toUpperCase()}</div>
+                      <div className="text-2xl font-bold mb-1" style={{color: '#007AFF'}}>
                         {formatCurrency(afterTaxEarnings[view])}
                       </div>
-                      <div className="text-xs text-ios-gray-dark">After taxes & deductions</div>
+                      <div className="text-xs text-gray-500">After taxes & deductions</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Quick Stats */}
                 <div className="mx-4 mt-4">
-                  <div className="bg-ios-system-bg rounded-ios-lg shadow-sm border border-ios-separator">
-                    <div className="divide-y divide-ios-separator">
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                    <div className="divide-y divide-gray-200">
                       <div className="p-4 flex justify-between items-center">
                         <div>
                           <div className="text-sm font-medium text-black">Hourly Rate</div>
-                          <div className="text-xs text-ios-gray-dark">Gross pay</div>
+                          <div className="text-xs text-gray-500">Gross pay</div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-sm font-semibold text-black">{formatCurrency(settings.hourlyRate)}</div>
-                        </div>
+                        <div className="text-sm font-semibold text-black">{formatCurrency(settings.hourlyRate)}</div>
                       </div>
                       
                       <div className="p-4 flex justify-between items-center">
                         <div>
                           <div className="text-sm font-medium text-black">Tax Rate</div>
-                          <div className="text-xs text-ios-gray-dark">Total burden</div>
+                          <div className="text-xs text-gray-500">Total burden</div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-sm font-semibold text-black">
-                            {(settings.federalTaxRate + settings.stateTaxRate + settings.socialSecurityRate + settings.medicareRate).toFixed(1)}%
-                          </div>
+                        <div className="text-sm font-semibold text-black">
+                          {(settings.federalTaxRate + settings.stateTaxRate + settings.socialSecurityRate + settings.medicareRate).toFixed(1)}%
                         </div>
                       </div>
                       
                       <div className="p-4 flex justify-between items-center">
                         <div>
                           <div className="text-sm font-medium text-black">Take-Home Rate</div>
-                          <div className="text-xs text-ios-gray-dark">After taxes</div>
+                          <div className="text-xs text-gray-500">After taxes</div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-sm font-semibold text-ios-blue">
-                            {formatCurrency(settings.hourlyRate * (1 - (settings.federalTaxRate + settings.stateTaxRate + settings.socialSecurityRate + settings.medicareRate) / 100))}
-                          </div>
+                        <div className="text-sm font-semibold" style={{color: '#007AFF'}}>
+                          {formatCurrency(settings.hourlyRate * (1 - (settings.federalTaxRate + settings.stateTaxRate + settings.socialSecurityRate + settings.medicareRate) / 100))}
                         </div>
                       </div>
                     </div>
@@ -513,13 +479,272 @@
 
                 {/* Current Time */}
                 <div className="mx-4 mt-4 text-center">
-                  <div className="text-xs text-ios-gray-dark">
+                  <div className="text-xs text-gray-500">
                     {currentTime.toLocaleTimeString()}
                   </div>
                 </div>
 
+                {/* Settings Modal */}
+                {showSettings && (
+                  <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end">
+                    <div className="bg-white w-full rounded-t-2xl max-h-[85vh] overflow-hidden">
+                      {/* Settings Header */}
+                      <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+                        <button
+                          onClick={() => setShowSettings(false)}
+                          className="font-medium"
+                          style={{color: '#007AFF'}}
+                        >
+                          Done
+                        </button>
+                        <h2 className="text-lg font-semibold text-black">Settings</h2>
+                        <div className="w-12"></div>
+                      </div>
+                      
+                      {/* Settings Content */}
+                      <div className="overflow-y-auto max-h-[calc(85vh-60px)]">
+                        <div className="p-4 space-y-6">
+                          
+                          {/* Work Settings Section */}
+                          <div>
+                            <div className="text-xs text-gray-500 mb-3 uppercase font-medium tracking-wide">Work Schedule</div>
+                            <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-200">
+                              
+                              <div className="p-4">
+                                <div className="flex justify-between items-center">
+                                  <div>
+                                    <div className="text-sm font-medium text-black">Hourly Rate</div>
+                                    <div className="text-xs text-gray-500">Gross pay per hour</div>
+                                  </div>
+                                  <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    step="0.01"
+                                    value={settings.hourlyRate}
+                                    onChange={(e) => handleSettingsChange('hourlyRate', e.target.value)}
+                                    className="w-20 text-right bg-transparent font-medium border-none outline-none"
+                                    style={{color: '#007AFF'}}
+                                    placeholder="0.00"
+                                  />
+                                </div>
+                              </div>
+                              
+                              <div className="p-4">
+                                <div className="flex justify-between items-center">
+                                  <div className="text-sm font-medium text-black">Work Start</div>
+                                  <input
+                                    type="time"
+                                    value={`${settings.workStartHour.toString().padStart(2, '0')}:${settings.workStartMinute.toString().padStart(2, '0')}`}
+                                    onChange={(e) => {
+                                      const [hours, minutes] = e.target.value.split(':');
+                                      handleSettingsChange('workStartHour', parseInt(hours));
+                                      handleSettingsChange('workStartMinute', parseInt(minutes));
+                                    }}
+                                    className="bg-transparent font-medium border-none outline-none"
+                                    style={{color: '#007AFF'}}
+                                  />
+                                </div>
+                              </div>
+                              
+                              <div className="p-4">
+                                <div className="flex justify-between items-center">
+                                  <div className="text-sm font-medium text-black">Work End</div>
+                                  <input
+                                    type="time"
+                                    value={`${settings.workEndHour.toString().padStart(2, '0')}:${settings.workEndMinute.toString().padStart(2, '0')}`}
+                                    onChange={(e) => {
+                                      const [hours, minutes] = e.target.value.split(':');
+                                      handleSettingsChange('workEndHour', parseInt(hours));
+                                      handleSettingsChange('workEndMinute', parseInt(minutes));
+                                    }}
+                                    className="bg-transparent font-medium border-none outline-none"
+                                    style={{color: '#007AFF'}}
+                                  />
+                                </div>
+                              </div>
+                              
+                              <div className="p-4">
+                                <div className="flex justify-between items-center">
+                                  <div className="text-sm font-medium text-black">Lunch Start</div>
+                                  <input
+                                    type="time"
+                                    value={`${settings.lunchStartHour.toString().padStart(2, '0')}:${settings.lunchStartMinute.toString().padStart(2, '0')}`}
+                                    onChange={(e) => {
+                                      const [hours, minutes] = e.target.value.split(':');
+                                      handleSettingsChange('lunchStartHour', parseInt(hours));
+                                      handleSettingsChange('lunchStartMinute', parseInt(minutes));
+                                    }}
+                                    className="bg-transparent font-medium border-none outline-none"
+                                    style={{color: '#007AFF'}}
+                                  />
+                                </div>
+                              </div>
+                              
+                              <div className="p-4">
+                                <div className="flex justify-between items-center">
+                                  <div className="text-sm font-medium text-black">Lunch End</div>
+                                  <input
+                                    type="time"
+                                    value={`${settings.lunchEndHour.toString().padStart(2, '0')}:${settings.lunchEndMinute.toString().padStart(2, '0')}`}
+                                    onChange={(e) => {
+                                      const [hours, minutes] = e.target.value.split(':');
+                                      handleSettingsChange('lunchEndHour', parseInt(hours));
+                                      handleSettingsChange('lunchEndMinute', parseInt(minutes));
+                                    }}
+                                    className="bg-transparent font-medium border-none outline-none"
+                                    style={{color: '#007AFF'}}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Pay Period Section */}
+                          <div>
+                            <div className="text-xs text-gray-500 mb-3 uppercase font-medium tracking-wide">Pay Period</div>
+                            <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-200">
+                              
+                              <div className="p-4">
+                                <div className="flex justify-between items-center">
+                                  <div className="text-sm font-medium text-black">Start Date</div>
+                                  <input
+                                    type="date"
+                                    value={settings.payPeriodStartDate}
+                                    onChange={(e) => handleSettingsChange('payPeriodStartDate', e.target.value)}
+                                    className="bg-transparent font-medium border-none outline-none"
+                                    style={{color: '#007AFF'}}
+                                  />
+                                </div>
+                              </div>
+                              
+                              <div className="p-4">
+                                <div className="flex justify-between items-center">
+                                  <div className="text-sm font-medium text-black">Length</div>
+                                  <select
+                                    value={settings.payPeriodLength}
+                                    onChange={(e) => handleSettingsChange('payPeriodLength', e.target.value)}
+                                    className="bg-transparent font-medium border-none outline-none"
+                                    style={{color: '#007AFF'}}
+                                  >
+                                    <option value={7}>Weekly</option>
+                                    <option value={14}>Bi-weekly</option>
+                                    <option value={15}>Semi-monthly</option>
+                                    <option value={30}>Monthly</option>
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Tax Settings Section */}
+                          <div>
+                            <div className="text-xs text-gray-500 mb-3 uppercase font-medium tracking-wide">Tax Rates (%)</div>
+                            <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-200">
+                              
+                              <div className="p-4">
+                                <div className="flex justify-between items-center">
+                                  <div className="text-sm font-medium text-black">Federal Tax</div>
+                                  <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    step="0.1"
+                                    min="0"
+                                    max="100"
+                                    value={settings.federalTaxRate}
+                                    onChange={(e) => handleSettingsChange('federalTaxRate', e.target.value)}
+                                    className="w-16 text-right bg-transparent font-medium border-none outline-none"
+                                    style={{color: '#007AFF'}}
+                                  />
+                                </div>
+                              </div>
+                              
+                              <div className="p-4">
+                                <div className="flex justify-between items-center">
+                                  <div className="text-sm font-medium text-black">State Tax</div>
+                                  <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    step="0.1"
+                                    min="0"
+                                    max="100"
+                                    value={settings.stateTaxRate}
+                                    onChange={(e) => handleSettingsChange('stateTaxRate', e.target.value)}
+                                    className="w-16 text-right bg-transparent font-medium border-none outline-none"
+                                    style={{color: '#007AFF'}}
+                                  />
+                                </div>
+                              </div>
+                              
+                              <div className="p-4">
+                                <div className="flex justify-between items-center">
+                                  <div className="text-sm font-medium text-black">Social Security</div>
+                                  <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    step="0.1"
+                                    min="0"
+                                    max="100"
+                                    value={settings.socialSecurityRate}
+                                    onChange={(e) => handleSettingsChange('socialSecurityRate', e.target.value)}
+                                    className="w-16 text-right bg-transparent font-medium border-none outline-none"
+                                    style={{color: '#007AFF'}}
+                                  />
+                                </div>
+                              </div>
+                              
+                              <div className="p-4">
+                                <div className="flex justify-between items-center">
+                                  <div className="text-sm font-medium text-black">Medicare</div>
+                                  <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    step="0.1"
+                                    min="0"
+                                    max="100"
+                                    value={settings.medicareRate}
+                                    onChange={(e) => handleSettingsChange('medicareRate', e.target.value)}
+                                    className="w-16 text-right bg-transparent font-medium border-none outline-none"
+                                    style={{color: '#007AFF'}}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Deductions Section */}
+                          <div className="pb-8">
+                            <div className="text-xs text-gray-500 mb-3 uppercase font-medium tracking-wide">Deductions</div>
+                            <div className="bg-white rounded-xl border border-gray-200">
+                              <div className="p-4">
+                                <div className="flex justify-between items-center">
+                                  <div>
+                                    <div className="text-sm font-medium text-black">Other Deductions</div>
+                                    <div className="text-xs text-gray-500">Per pay period</div>
+                                  </div>
+                                  <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    step="0.01"
+                                    value={settings.otherDeductions}
+                                    onChange={(e) => handleSettingsChange('otherDeductions', e.target.value)}
+                                    className="w-20 text-right bg-transparent font-medium border-none outline-none"
+                                    style={{color: '#007AFF'}}
+                                    placeholder="0.00"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Bottom Safe Area */}
                 <div className="h-8"></div>
+              </div>
+            </div>
           );
         };
 
