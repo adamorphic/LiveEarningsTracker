@@ -2,20 +2,20 @@
     "name": "Live Earnings Tracker",
     "short_name": "Earnings Tracker",
     "description": "Watch your money grow in real-time!",
-    "start_url": "/repository-name/",
+    "start_url": "/LiveEarningsTracker/",
     "display": "standalone",
     "background_color": "#f0fdf4",
     "theme_color": "#10b981",
     "orientation": "portrait",
     "icons": [
         {
-            "src": "/repository-name/icon-192.png",
+            "src": "/LiveEarningsTracker/android-chrome-192x192.png",
             "sizes": "192x192",
             "type": "image/png",
             "purpose": "any maskable"
         },
         {
-            "src": "/repository-name/icon-512.png",
+            "src": "/LiveEarningsTracker/android-chrome-512x512.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any maskable"
