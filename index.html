@@ -35,7 +35,20 @@
     
     <!-- React Component -->
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useMemo, useCallback } = React;
+        
+        // Utility function for debouncing
+        const debounce = (func, wait) => {
+          let timeout;
+          return function executedFunction(...args) {
+            const later = () => {
+              clearTimeout(timeout);
+              func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+          };
+        };
         
         // Lucide icons as components
         const Clock = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>;
@@ -46,6 +59,7 @@
         const Settings = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
         const X = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
         const Download = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+        const Zap = ({size = 24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"/></svg>;
 
         const LiveEarningsTracker = () => {
           const [currentTime, setCurrentTime] = useState(new Date());
@@ -56,6 +70,15 @@
           const [showInstallPrompt, setShowInstallPrompt] = useState(false);
           const [parsedPayStub, setParsedPayStub] = useState(null);
           const [isParsingPDF, setIsParsingPDF] = useState(false);
+          const [goals, setGoals] = useState(() => {
+            const savedGoals = localStorage.getItem('earningsTrackerGoals');
+            return savedGoals ? JSON.parse(savedGoals) : {
+              daily: 150,
+              weekly: 750,
+              monthly: 3000
+            };
+          });
+          const [showGoals, setShowGoals] = useState(false);
 
           // User settings with localStorage
           const [settings, setSettings] = useState(() => {
@@ -83,7 +106,9 @@
               stateTaxRate: 5,
               socialSecurityRate: 6.2,
               medicareRate: 1.45,
-              otherDeductions: 0
+              otherDeductions: 0,
+              overtimeThreshold: 8,
+              overtimeMultiplier: 1.5
             };
           });
 
@@ -100,18 +125,29 @@
             localStorage.setItem('earningsTrackerSettings', JSON.stringify(settings));
           }, [settings]);
 
+          // Save goals to localStorage
+          useEffect(() => {
+            localStorage.setItem('earningsTrackerGoals', JSON.stringify(goals));
+          }, [goals]);
+
           // Save sound preference
           useEffect(() => {
             localStorage.setItem('earningsTrackerSound', JSON.stringify(soundEnabled));
           }, [soundEnabled]);
 
+          // Debounced time update for better performance
+          const debouncedTimeUpdate = useCallback(
+            debounce(() => setCurrentTime(new Date()), 100),
+            []
+          );
+
           // Update time every second
           useEffect(() => {
             const timer = setInterval(() => {
-              setCurrentTime(new Date());
+              debouncedTimeUpdate();
             }, 1000);
             return () => clearInterval(timer);
-          }, []);
+          }, [debouncedTimeUpdate]);
 
           // PWA Installation handling
           useEffect(() => {
@@ -159,7 +195,188 @@
             }
           };
 
-          // Parse PDF pay stub
+          // Enhanced PDF parsing with better error handling
+          const parsePayStubText = (text) => {
+            const parsed = {};
+            console.log('Full PDF text for debugging:', text);
+            
+            // Normalize text - remove extra spaces, standardize currency symbols
+            const normalizedText = text.replace(/\s+/g, ' ').replace(/[$]/g, '').trim();
+            
+            // More comprehensive hourly rate patterns
+            const hourlyRatePatterns = [
+              // Standard patterns
+              /(?:hourly\s*rate|rate\s*per\s*hour|base\s*rate)[:\s]*(\d+\.?\d*)/gi,
+              /(\d+\.?\d*)\s*(?:\/\s*hr|per\s*hr|hourly)/gi,
+              
+              // Table-style patterns (common in payroll systems)
+              /regular\s+(\d+\.?\d*)\s+(\d+\.?\d*)\s+(\d+\.?\d*)/gi, // hours, rate, total
+              /(\d+\.?\d*)\s*hrs?\s*@?\s*(\d+\.?\d*)/gi,
+              
+              // ADP/Workday style patterns
+              /regular\s*pay[:\s]*(\d+\.?\d*)/gi,
+              /base\s*hourly[:\s]*(\d+\.?\d*)/gi,
+              
+              // Look for patterns like "40.00 19.50 780.00" (hours, rate, total)
+              /(\d{1,3}\.?\d*)\s+(\d{1,2}\.\d{2})\s+(\d{2,4}\.\d{2})/g
+            ];
+            
+            for (const pattern of hourlyRatePatterns) {
+              const matches = [...normalizedText.matchAll(pattern)];
+              for (const match of matches) {
+                let rate;
+                
+                // Handle different match group structures
+                if (match.length === 4) { // hours, rate, total pattern
+                  rate = parseFloat(match[2]);
+                  const hours = parseFloat(match[1]);
+                  const total = parseFloat(match[3]);
+                  
+                  // Validate calculation makes sense
+                  if (Math.abs((hours * rate) - total) < 1) {
+                    parsed.hourlyRate = rate;
+                    break;
+                  }
+                } else {
+                  rate = parseFloat(match[1]);
+                }
+                
+                // Validate rate is reasonable
+                if (rate >= 7.25 && rate <= 150) { // Min wage to reasonable max
+                  parsed.hourlyRate = rate;
+                  break;
+                }
+              }
+              if (parsed.hourlyRate) break;
+            }
+            
+            // Enhanced gross pay detection with validation
+            const grossPayPatterns = [
+              /gross\s*pay[:\s]*(\d+\.?\d*)/gi,
+              /total\s*gross[:\s]*(\d+\.?\d*)/gi,
+              /current\s*gross[:\s]*(\d+\.?\d*)/gi,
+              /gross\s*earnings[:\s]*(\d+\.?\d*)/gi,
+              // Pattern for YTD vs current period
+              /gross\s*(\d+\.?\d*)\s*(\d+\.?\d*)/gi // often current, YTD
+            ];
+            
+            let grossPay = null;
+            for (const pattern of grossPayPatterns) {
+              const matches = [...normalizedText.matchAll(pattern)];
+              for (const match of matches) {
+                let amount;
+                if (match.length === 3) {
+                  // Take the smaller number (likely current period, not YTD)
+                  amount = Math.min(parseFloat(match[1]), parseFloat(match[2]));
+                } else {
+                  amount = parseFloat(match[1]);
+                }
+                
+                // Validate gross pay is reasonable for a pay period
+                if (amount >= 100 && amount <= 20000) {
+                  grossPay = amount;
+                  break;
+                }
+              }
+              if (grossPay) break;
+            }
+            
+            // Calculate tax rates with better error handling
+            const calculateTaxRate = (patterns, grossPay, expectedRange) => {
+              for (const pattern of patterns) {
+                const matches = [...normalizedText.matchAll(pattern)];
+                for (const match of matches) {
+                  const taxAmount = parseFloat(match[1]);
+                  if (taxAmount > 0 && grossPay && taxAmount < grossPay * 0.5) {
+                    const rate = (taxAmount / grossPay) * 100;
+                    if (rate >= expectedRange.min && rate <= expectedRange.max) {
+                      return rate.toFixed(2);
+                    }
+                  }
+                }
+              }
+              return null;
+            };
+            
+            // Federal tax patterns with validation
+            const federalTaxPatterns = [
+              /federal\s*(?:income\s*)?tax[:\s]*(\d+\.?\d*)/gi,
+              /fed\s*tax[:\s]*(\d+\.?\d*)/gi,
+              /fit[:\s]*(\d+\.?\d*)/gi,
+              /federal\s*withholding[:\s]*(\d+\.?\d*)/gi
+            ];
+            
+            if (grossPay) {
+              parsed.federalTaxRate = calculateTaxRate(federalTaxPatterns, grossPay, {min: 0, max: 37});
+              
+              // State tax
+              const stateTaxPatterns = [
+                /state\s*(?:income\s*)?tax[:\s]*(\d+\.?\d*)/gi,
+                /sit[:\s]*(\d+\.?\d*)/gi,
+                /state\s*withholding[:\s]*(\d+\.?\d*)/gi
+              ];
+              parsed.stateTaxRate = calculateTaxRate(stateTaxPatterns, grossPay, {min: 0, max: 13});
+              
+              // Social Security
+              const ssPatterns = [
+                /(?:social\s*security|ss|oasdi)[:\s]*(\d+\.?\d*)/gi,
+                /soc\s*sec[:\s]*(\d+\.?\d*)/gi
+              ];
+              parsed.socialSecurityRate = calculateTaxRate(ssPatterns, grossPay, {min: 5, max: 7});
+              
+              // Medicare
+              const medicarePatterns = [
+                /medicare[:\s]*(\d+\.?\d*)/gi,
+                /med\s*tax[:\s]*(\d+\.?\d*)/gi
+              ];
+              parsed.medicareRate = calculateTaxRate(medicarePatterns, grossPay, {min: 1, max: 2});
+            }
+            
+            // Enhanced date detection
+            const datePatterns = [
+              /(\d{1,2}\/\d{1,2}\/\d{4})\s*[-–—to]\s*(\d{1,2}\/\d{1,2}\/\d{4})/gi,
+              /(\d{4}-\d{2}-\d{2})\s*[-–—to]\s*(\d{4}-\d{2}-\d{2})/gi,
+              /pay\s*period[:\s]*(\d{1,2}\/\d{1,2}\/\d{4})\s*[-–—to]\s*(\d{1,2}\/\d{1,2}\/\d{4})/gi
+            ];
+            
+            for (const pattern of datePatterns) {
+              const matches = [...normalizedText.matchAll(pattern)];
+              for (const match of matches) {
+                try {
+                  const startDate = new Date(match[1]);
+                  const endDate = new Date(match[2]);
+                  
+                  if (startDate < endDate) {
+                    const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+                    
+                    if (daysDiff >= 7 && daysDiff <= 31) {
+                      parsed.payPeriodLength = daysDiff;
+                      parsed.payPeriodStartDate = startDate.toISOString().split('T')[0];
+                      break;
+                    }
+                  }
+                } catch (e) {
+                  continue;
+                }
+              }
+              if (parsed.payPeriodLength) break;
+            }
+            
+            // Log parsing results for debugging
+            console.log('Parsing results:', {
+              hourlyRate: parsed.hourlyRate,
+              federalTaxRate: parsed.federalTaxRate,
+              stateTaxRate: parsed.stateTaxRate,
+              socialSecurityRate: parsed.socialSecurityRate,
+              medicareRate: parsed.medicareRate,
+              payPeriodLength: parsed.payPeriodLength,
+              grossPayDetected: grossPay
+            });
+            
+            return parsed;
+          };
+
+          // Parse PDF pay stub with error boundary
           const parsePDFPayStub = async (file) => {
             setIsParsingPDF(true);
             try {
@@ -195,228 +412,6 @@
             } finally {
               setIsParsingPDF(false);
             }
-          };
-
-          // Parse pay stub text using regex patterns
-          const parsePayStubText = (text) => {
-            const parsed = {};
-            
-            // Convert to lowercase for easier matching
-            const lowerText = text.toLowerCase();
-            
-            // Pattern for hourly rate (look for rate, hourly, /hr, per hour)
-            const hourlyRatePatterns = [
-              /(?:rate|hourly|\/hr|per\s*hour)[:\s]*\$?(\d+\.?\d*)/gi,
-              /\$(\d+\.?\d*)\s*(?:\/\s*hr|per\s*hour|hourly)/gi,
-              /regular\s*rate[:\s]*\$?(\d+\.?\d*)/gi,
-              /base\s*rate[:\s]*\$?(\d+\.?\d*)/gi,
-              /pay\s*rate[:\s]*\$?(\d+\.?\d*)/gi,
-              // Look for patterns like "40.00 hrs @ $25.50"
-              /(\d+\.?\d*)\s*hrs?\s*@\s*\$(\d+\.?\d*)/gi,
-              /(\d+\.?\d*)\s*hours?\s*@\s*\$(\d+\.?\d*)/gi,
-              // Look for rate in tables or structured data
-              /\$(\d+\.?\d*)\s*\/\s*hr/gi,
-              /hourly:\s*\$?(\d+\.?\d*)/gi
-            ];
-            
-            for (const pattern of hourlyRatePatterns) {
-              const matches = [...text.matchAll(pattern)];
-              for (const match of matches) {
-                // For patterns that capture hours and rate separately
-                if (match.length > 2 && match[2]) {
-                  const rate = parseFloat(match[2]);
-                  if (rate > 5 && rate < 200) {
-                    parsed.hourlyRate = rate;
-                    break;
-                  }
-                } else {
-                  const rate = parseFloat(match[1]);
-                  if (rate > 5 && rate < 200) {
-                    parsed.hourlyRate = rate;
-                    break;
-                  }
-                }
-              }
-              if (parsed.hourlyRate) break;
-            }
-
-            // More flexible patterns for federal tax
-            const federalTaxPatterns = [
-              /(?:federal|fed)\s*(?:tax|withholding|w\/h|income)[:\s]*\$?(\d+\.?\d*)/gi,
-              /fed\s*tax[:\s]*\$?(\d+\.?\d*)/gi,
-              /federal\s*income\s*tax[:\s]*\$?(\d+\.?\d*)/gi,
-              /fit[:\s]*\$?(\d+\.?\d*)/gi, // Federal Income Tax abbreviation
-              /federal[:\s]*\$?(\d+\.?\d*)/gi,
-              /fed[:\s]*\$?(\d+\.?\d*)/gi,
-              /us\s*tax[:\s]*\$?(\d+\.?\d*)/gi
-            ];
-            
-            // More flexible patterns for gross pay
-            const grossPayPatterns = [
-              /(?:gross|total)\s*(?:pay|earnings|wages)[:\s]*\$?(\d+\.?\d*)/gi,
-              /gross[:\s]*\$?(\d+\.?\d*)/gi,
-              /total\s*earnings[:\s]*\$?(\d+\.?\d*)/gi,
-              /total\s*wages[:\s]*\$?(\d+\.?\d*)/gi,
-              /current\s*gross[:\s]*\$?(\d+\.?\d*)/gi,
-              /period\s*gross[:\s]*\$?(\d+\.?\d*)/gi
-            ];
-            
-            let grossPay = null;
-            for (const pattern of grossPayPatterns) {
-              const matches = [...text.matchAll(pattern)];
-              for (const match of matches) {
-                const amount = parseFloat(match[1]);
-                if (amount > 0 && amount < 50000) { // Reasonable gross pay range per period
-                  grossPay = amount;
-                  break;
-                }
-              }
-              if (grossPay) break;
-            }
-
-            console.log('Found gross pay:', grossPay);
-
-            // Extract federal tax amounts and calculate percentages
-            for (const pattern of federalTaxPatterns) {
-              const matches = [...text.matchAll(pattern)];
-              for (const match of matches) {
-                const taxAmount = parseFloat(match[1]);
-                if (taxAmount > 0 && grossPay && taxAmount < grossPay) {
-                  const rate = ((taxAmount / grossPay) * 100);
-                  if (rate > 0 && rate < 50) { // Reasonable tax rate
-                    parsed.federalTaxRate = rate.toFixed(1);
-                    break;
-                  }
-                }
-              }
-              if (parsed.federalTaxRate) break;
-            }
-
-            // More flexible state tax patterns
-            const stateTaxPatterns = [
-              /(?:state|st)\s*(?:tax|withholding|w\/h|income)[:\s]*\$?(\d+\.?\d*)/gi,
-              /state\s*income\s*tax[:\s]*\$?(\d+\.?\d*)/gi,
-              /sit[:\s]*\$?(\d+\.?\d*)/gi, // State Income Tax abbreviation
-              /state[:\s]*\$?(\d+\.?\d*)/gi,
-              /st\s*tax[:\s]*\$?(\d+\.?\d*)/gi
-            ];
-            
-            for (const pattern of stateTaxPatterns) {
-              const matches = [...text.matchAll(pattern)];
-              for (const match of matches) {
-                const taxAmount = parseFloat(match[1]);
-                if (taxAmount > 0 && grossPay && taxAmount < grossPay) {
-                  const rate = ((taxAmount / grossPay) * 100);
-                  if (rate > 0 && rate < 30) { // Reasonable state tax rate
-                    parsed.stateTaxRate = rate.toFixed(1);
-                    break;
-                  }
-                }
-              }
-              if (parsed.stateTaxRate) break;
-            }
-
-            // More flexible Social Security patterns
-            const socialSecurityPatterns = [
-              /(?:social\s*security|soc\s*sec|ss\s*tax|oasdi)[:\s]*\$?(\d+\.?\d*)/gi,
-              /fica[:\s]*\$?(\d+\.?\d*)/gi,
-              /ss[:\s]*\$?(\d+\.?\d*)/gi,
-              /soc\s*sec[:\s]*\$?(\d+\.?\d*)/gi
-            ];
-            
-            for (const pattern of socialSecurityPatterns) {
-              const matches = [...text.matchAll(pattern)];
-              for (const match of matches) {
-                const taxAmount = parseFloat(match[1]);
-                if (taxAmount > 0 && grossPay && taxAmount < grossPay) {
-                  const rate = ((taxAmount / grossPay) * 100);
-                  if (rate > 4 && rate < 8) { // SS rate should be around 6.2%
-                    parsed.socialSecurityRate = rate.toFixed(1);
-                    break;
-                  }
-                }
-              }
-              if (parsed.socialSecurityRate) break;
-            }
-
-            // More flexible Medicare patterns
-            const medicarePatterns = [
-              /medicare[:\s]*\$?(\d+\.?\d*)/gi,
-              /med\s*tax[:\s]*\$?(\d+\.?\d*)/gi,
-              /medicare\s*tax[:\s]*\$?(\d+\.?\d*)/gi,
-              /med[:\s]*\$?(\d+\.?\d*)/gi
-            ];
-            
-            for (const pattern of medicarePatterns) {
-              const matches = [...text.matchAll(pattern)];
-              for (const match of matches) {
-                const taxAmount = parseFloat(match[1]);
-                if (taxAmount > 0 && grossPay && taxAmount < grossPay) {
-                  const rate = ((taxAmount / grossPay) * 100);
-                  if (rate > 0.5 && rate < 3) { // Medicare rate should be around 1.45%
-                    parsed.medicareRate = rate.toFixed(1);
-                    break;
-                  }
-                }
-              }
-              if (parsed.medicareRate) break;
-            }
-
-            // More flexible deduction patterns
-            const deductionPatterns = [
-              /(?:401k|retirement|pension)[:\s]*\$?(\d+\.?\d*)/gi,
-              /(?:health|medical|insurance|dental|vision)[:\s]*\$?(\d+\.?\d*)/gi,
-              /(?:benefits|benefit)[:\s]*\$?(\d+\.?\d*)/gi,
-              /(?:life\s*insurance|life\s*ins)[:\s]*\$?(\d+\.?\d*)/gi,
-              /(?:parking|transit|commuter)[:\s]*\$?(\d+\.?\d*)/gi,
-              /(?:union|dues)[:\s]*\$?(\d+\.?\d*)/gi
-            ];
-            
-            let totalDeductions = 0;
-            for (const pattern of deductionPatterns) {
-              const matches = [...text.matchAll(pattern)];
-              for (const match of matches) {
-                const amount = parseFloat(match[1]);
-                if (amount > 0 && amount < 2000) { // Reasonable deduction range
-                  totalDeductions += amount;
-                }
-              }
-            }
-            
-            if (totalDeductions > 0) {
-              parsed.otherDeductions = totalDeductions.toFixed(2);
-            }
-
-            // More flexible date patterns
-            const datePatterns = [
-              /(\d{1,2}\/\d{1,2}\/\d{4})\s*(?:to|-|through)\s*(\d{1,2}\/\d{1,2}\/\d{4})/gi,
-              /(\d{4}-\d{2}-\d{2})\s*(?:to|-|through)\s*(\d{4}-\d{2}-\d{2})/gi,
-              /pay\s*period[:\s]*(\d{1,2}\/\d{1,2}\/\d{4})\s*(?:to|-|through)\s*(\d{1,2}\/\d{1,2}\/\d{4})/gi,
-              /period[:\s]*(\d{1,2}\/\d{1,2}\/\d{4})\s*(?:to|-|through)\s*(\d{1,2}\/\d{1,2}\/\d{4})/gi
-            ];
-            
-            for (const pattern of datePatterns) {
-              const matches = [...text.matchAll(pattern)];
-              for (const match of matches) {
-                try {
-                  const startDate = new Date(match[1]);
-                  const endDate = new Date(match[2]);
-                  const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-                  
-                  if (daysDiff > 0 && daysDiff <= 31) {
-                    parsed.payPeriodLength = daysDiff;
-                    parsed.payPeriodStartDate = startDate.toISOString().split('T')[0];
-                    break;
-                  }
-                } catch (e) {
-                  console.log('Date parsing error:', e);
-                }
-              }
-              if (parsed.payPeriodLength) break;
-            }
-
-            console.log('Parsed pay stub data:', parsed);
-            return parsed;
           };
 
           // Handle file upload
@@ -468,9 +463,14 @@
             alert('Settings updated from pay stub!');
           };
 
-          // Play cha-ching sound effect
+          // Enhanced sound effect with haptic feedback
           const playChaChing = () => {
             if (!soundEnabled) return;
+            
+            // Haptic feedback on mobile
+            if (navigator.vibrate) {
+              navigator.vibrate([50, 30, 50]);
+            }
             
             try {
               const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -530,8 +530,10 @@
             return payPeriodStart;
           };
 
+          // Enhanced earnings calculation with overtime support
           const calculateEarnings = (startDate, endDate = currentTime) => {
             let totalMinutes = 0;
+            let overtimeMinutes = 0;
             const current = new Date(startDate);
             
             while (current <= endDate) {
@@ -562,14 +564,24 @@
                     workMinutes -= (lunchOverlapEnd - lunchOverlapStart) / (1000 * 60);
                   }
                   
-                  totalMinutes += Math.max(0, workMinutes);
+                  const dayWorkMinutes = Math.max(0, workMinutes);
+                  const overtimeThresholdMinutes = settings.overtimeThreshold * 60;
+                  
+                  if (dayWorkMinutes > overtimeThresholdMinutes) {
+                    totalMinutes += overtimeThresholdMinutes;
+                    overtimeMinutes += dayWorkMinutes - overtimeThresholdMinutes;
+                  } else {
+                    totalMinutes += dayWorkMinutes;
+                  }
                 }
               }
               current.setDate(current.getDate() + 1);
               current.setHours(settings.workStartHour, settings.workStartMinute, 0, 0);
             }
             
-            return (totalMinutes / 60) * settings.hourlyRate;
+            const regularEarnings = (totalMinutes / 60) * settings.hourlyRate;
+            const overtimeEarnings = (overtimeMinutes / 60) * settings.hourlyRate * settings.overtimeMultiplier;
+            return regularEarnings + overtimeEarnings;
           };
 
           const calculateAfterTaxEarnings = (grossEarnings) => {
@@ -578,7 +590,8 @@
             return Math.max(0, afterTaxEarnings - (view === 'payPeriod' ? settings.otherDeductions : 0));
           };
 
-          const getDateRanges = () => {
+          // Memoized date ranges for better performance
+          const dateRanges = useMemo(() => {
             const now = new Date(currentTime);
             const todayStart = new Date(now);
             todayStart.setHours(settings.workStartHour, settings.workStartMinute, 0, 0);
@@ -588,29 +601,33 @@
             weekStart.setDate(now.getDate() - daysFromMonday);
             weekStart.setHours(settings.workStartHour, settings.workStartMinute, 0, 0);
             
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            monthStart.setHours(settings.workStartHour, settings.workStartMinute, 0, 0);
+            
             const yearStart = new Date(now.getFullYear(), 0, 1);
             yearStart.setHours(settings.workStartHour, settings.workStartMinute, 0, 0);
             
             const payPeriodStart = getPayPeriodStart(now);
             
-            return { todayStart, weekStart, yearStart, payPeriodStart };
-          };
+            return { todayStart, weekStart, monthStart, yearStart, payPeriodStart };
+          }, [currentTime, settings]);
 
-          const { todayStart, weekStart, yearStart, payPeriodStart } = getDateRanges();
-          
-          const grossEarnings = {
-            today: calculateEarnings(todayStart),
-            week: calculateEarnings(weekStart),
-            year: calculateEarnings(yearStart),
-            payPeriod: calculateEarnings(payPeriodStart)
-          };
+          // Memoized earnings calculations
+          const grossEarnings = useMemo(() => ({
+            today: calculateEarnings(dateRanges.todayStart),
+            week: calculateEarnings(dateRanges.weekStart),
+            month: calculateEarnings(dateRanges.monthStart),
+            year: calculateEarnings(dateRanges.yearStart),
+            payPeriod: calculateEarnings(dateRanges.payPeriodStart)
+          }), [dateRanges, settings]);
 
-          const afterTaxEarnings = {
+          const afterTaxEarnings = useMemo(() => ({
             today: calculateAfterTaxEarnings(grossEarnings.today),
             week: calculateAfterTaxEarnings(grossEarnings.week),
+            month: calculateAfterTaxEarnings(grossEarnings.month),
             year: calculateAfterTaxEarnings(grossEarnings.year),
             payPeriod: calculateAfterTaxEarnings(grossEarnings.payPeriod)
-          };
+          }), [grossEarnings]);
 
           const isCurrentlyEarning = isWorkDay(currentTime) && isWorkTime(currentTime);
           const earningsPerSecond = settings.hourlyRate / 3600;
@@ -635,23 +652,49 @@
             }));
           };
 
+          const handleGoalChange = (period, value) => {
+            setGoals(prev => ({
+              ...prev,
+              [period]: parseFloat(value) || 0
+            }));
+          };
+
           const formatCurrency = (amount) => `$${amount.toFixed(2)}`;
           
           const getViewLabel = () => {
             switch(view) {
               case 'today': return 'Today';
               case 'week': return 'This Week';
+              case 'month': return 'This Month';
               case 'year': return 'This Year';
               case 'payPeriod': return 'This Pay Period';
               default: return '';
             }
           };
 
-          const formatTime12Hour = (hour, minute) => {
-            const period = hour >= 12 ? 'PM' : 'AM';
-            const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-            return `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
+          // Goal progress calculation
+          const getGoalProgress = () => {
+            const current = afterTaxEarnings[view];
+            let goal;
+            
+            switch(view) {
+              case 'today':
+                goal = goals.daily;
+                break;
+              case 'week':
+                goal = goals.weekly;
+                break;
+              case 'month':
+                goal = goals.monthly;
+                break;
+              default:
+                return null;
+            }
+            
+            return goal ? (current / goal) * 100 : 0;
           };
+
+          const goalProgress = getGoalProgress();
 
           return (
             <div className="min-h-screen bg-gray-50" style={{fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif'}}>
@@ -669,12 +712,22 @@
                         <p className="text-xs text-gray-500">Live Tracker</p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => setShowSettings(!showSettings)}
-                      className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"
-                    >
-                      <Settings size={18} className="text-gray-600" />
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setShowGoals(!showGoals)}
+                        className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"
+                        title="Goals"
+                      >
+                        <Target size={18} className="text-gray-600" />
+                      </button>
+                      <button
+                        onClick={() => setShowSettings(!showSettings)}
+                        className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"
+                        title="Settings"
+                      >
+                        <Settings size={18} className="text-gray-600" />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -687,6 +740,7 @@
                         <span className="text-sm font-medium text-black">
                           {isCurrentlyEarning ? 'On the Clock' : 'Off the Clock'}
                         </span>
+                        {isCurrentlyEarning && <Zap size={16} className="text-green-500" />}
                       </div>
                       <button
                         onClick={() => setSoundEnabled(!soundEnabled)}
@@ -709,19 +763,46 @@
                   </div>
                 </div>
 
+                {/* Goal Progress (when applicable) */}
+                {goalProgress !== null && goalProgress > 0 && (
+                  <div className="mx-4 mt-4 bg-white rounded-xl shadow-sm border border-gray-200">
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-sm font-medium text-black">Goal Progress</div>
+                        <div className="text-sm font-semibold" style={{color: '#007AFF'}}>
+                          {Math.min(goalProgress, 100).toFixed(0)}%
+                        </div>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="h-2 rounded-full transition-all duration-300" 
+                          style={{
+                            width: `${Math.min(goalProgress, 100)}%`,
+                            backgroundColor: goalProgress >= 100 ? '#10b981' : '#007AFF'
+                          }}
+                        ></div>
+                      </div>
+                      {goalProgress >= 100 && (
+                        <div className="text-xs text-green-600 mt-1 font-medium">🎉 Goal achieved!</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Time Period Selector */}
                 <div className="mx-4 mt-4">
                   <div className="bg-gray-100 rounded-lg p-1 flex">
                     {[
                       { key: 'today', label: 'Today' },
                       { key: 'week', label: 'Week' },
+                      { key: 'month', label: 'Month' },
                       { key: 'year', label: 'Year' },
                       { key: 'payPeriod', label: 'Period' }
                     ].map(({ key, label }) => (
                       <button
                         key={key}
                         onClick={() => setView(key)}
-                        className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                        className={`flex-1 py-2 px-2 rounded-md text-xs font-medium transition-all ${
                           view === key 
                             ? 'bg-white text-black shadow-sm' 
                             : 'text-gray-600'
@@ -797,6 +878,76 @@
                     {currentTime.toLocaleTimeString()}
                   </div>
                 </div>
+
+                {/* Goals Modal */}
+                {showGoals && (
+                  <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end">
+                    <div className="bg-white w-full rounded-t-2xl max-h-[85vh] overflow-hidden">
+                      <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+                        <button
+                          onClick={() => setShowGoals(false)}
+                          className="font-medium"
+                          style={{color: '#007AFF'}}
+                        >
+                          Done
+                        </button>
+                        <h2 className="text-lg font-semibold text-black">Goals</h2>
+                        <div className="w-12"></div>
+                      </div>
+                      
+                      <div className="p-4 space-y-4">
+                        <div className="text-xs text-gray-500 mb-3 uppercase font-medium tracking-wide">Earning Goals (Take-Home)</div>
+                        
+                        <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-200">
+                          <div className="p-4">
+                            <div className="flex justify-between items-center">
+                              <div className="text-sm font-medium text-black">Daily Goal</div>
+                              <input
+                                type="number"
+                                step="1"
+                                value={goals.daily}
+                                onChange={(e) => handleGoalChange('daily', e.target.value)}
+                                className="w-20 text-right bg-transparent font-medium border-none outline-none"
+                                style={{color: '#007AFF'}}
+                                placeholder="0"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="p-4">
+                            <div className="flex justify-between items-center">
+                              <div className="text-sm font-medium text-black">Weekly Goal</div>
+                              <input
+                                type="number"
+                                step="1"
+                                value={goals.weekly}
+                                onChange={(e) => handleGoalChange('weekly', e.target.value)}
+                                className="w-20 text-right bg-transparent font-medium border-none outline-none"
+                                style={{color: '#007AFF'}}
+                                placeholder="0"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="p-4">
+                            <div className="flex justify-between items-center">
+                              <div className="text-sm font-medium text-black">Monthly Goal</div>
+                              <input
+                                type="number"
+                                step="1"
+                                value={goals.monthly}
+                                onChange={(e) => handleGoalChange('monthly', e.target.value)}
+                                className="w-20 text-right bg-transparent font-medium border-none outline-none"
+                                style={{color: '#007AFF'}}
+                                placeholder="0"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Settings Modal */}
                 {showSettings && (
@@ -946,6 +1097,40 @@
                                     className="w-20 text-right bg-transparent font-medium border-none outline-none"
                                     style={{color: '#007AFF'}}
                                     placeholder="0.00"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="p-4">
+                                <div className="flex justify-between items-center">
+                                  <div>
+                                    <div className="text-sm font-medium text-black">Overtime After</div>
+                                    <div className="text-xs text-gray-500">Hours per day</div>
+                                  </div>
+                                  <input
+                                    type="number"
+                                    step="0.5"
+                                    value={settings.overtimeThreshold}
+                                    onChange={(e) => handleSettingsChange('overtimeThreshold', e.target.value)}
+                                    className="w-16 text-right bg-transparent font-medium border-none outline-none"
+                                    style={{color: '#007AFF'}}
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="p-4">
+                                <div className="flex justify-between items-center">
+                                  <div>
+                                    <div className="text-sm font-medium text-black">Overtime Rate</div>
+                                    <div className="text-xs text-gray-500">Multiplier (e.g., 1.5x)</div>
+                                  </div>
+                                  <input
+                                    type="number"
+                                    step="0.1"
+                                    value={settings.overtimeMultiplier}
+                                    onChange={(e) => handleSettingsChange('overtimeMultiplier', e.target.value)}
+                                    className="w-16 text-right bg-transparent font-medium border-none outline-none"
+                                    style={{color: '#007AFF'}}
                                   />
                                 </div>
                               </div>
@@ -1157,6 +1342,36 @@
                             </div>
                           </div>
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Install Prompt */}
+                {showInstallPrompt && (
+                  <div className="fixed bottom-4 left-4 right-4 bg-white rounded-xl shadow-lg border border-gray-200 p-4 z-40">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="text-2xl">📱</div>
+                        <div>
+                          <div className="text-sm font-medium text-black">Install App</div>
+                          <div className="text-xs text-gray-500">Add to home screen for quick access</div>
+                        </div>
+                      </div>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => setShowInstallPrompt(false)}
+                          className="px-3 py-1 text-xs bg-gray-100 text-gray-600 rounded-lg"
+                        >
+                          Not Now
+                        </button>
+                        <button
+                          onClick={handleInstallClick}
+                          className="px-3 py-1 text-xs text-white rounded-lg"
+                          style={{backgroundColor: '#007AFF'}}
+                        >
+                          Install
+                        </button>
                       </div>
                     </div>
                   </div>
