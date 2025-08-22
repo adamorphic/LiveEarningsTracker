@@ -1,4 +1,24 @@
-<!DOCTYPE html>
+// Save settings to localStorage whenever they change
+          useEffect(() => {
+            localStorage.setItem('earningsTrackerSettings', JSON.stringify(settings));
+          }, [settings]);
+
+          // Also save sound preference
+          // Also save sound preference
+          const [soundEnabled, setSoundEnabled] = useState(() => {
+            const savedSound = localStorage.getItem('earningsTrackerSound');
+            return savedSound !== null ? JSON.parse(savedSound) : true;
+          });
+
+          // Save sound preference
+          useEffect(() => {
+            localStorage.setItem('earningsTrackerSound', JSON.stringify(soundEnabled));
+          }, [soundEnabled]);
+
+          // Save sound preference
+          useEffect(() => {
+            localStorage.setItem('earningsTrackerSound', JSON.stringify(soundEnabled));
+          }, [soundEnabled]);<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -54,23 +74,35 @@
           const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
           // User settings with state
-          const [settings, setSettings] = useState({
-            hourlyRate: 19.20,
-            workStartHour: 9,
-            workStartMinute: 30,
-            workEndHour: 18,
-            workEndMinute: 30,
-            lunchStartHour: 13,
-            lunchStartMinute: 0,
-            lunchEndHour: 14,
-            lunchEndMinute: 0,
-            payPeriodStartDate: '2025-08-07',
-            payPeriodLength: 14,
-            federalTaxRate: 12,
-            stateTaxRate: 5,
-            socialSecurityRate: 6.2,
-            medicareRate: 1.45,
-            otherDeductions: 0
+          const [settings, setSettings] = useState(() => {
+            // Load saved settings from localStorage or use defaults
+            const savedSettings = localStorage.getItem('earningsTrackerSettings');
+            if (savedSettings) {
+              try {
+                return JSON.parse(savedSettings);
+              } catch (e) {
+                console.log('Error loading saved settings:', e);
+              }
+            }
+            // Default settings if nothing saved
+            return {
+              hourlyRate: 19.20,
+              workStartHour: 9,
+              workStartMinute: 30,
+              workEndHour: 18,
+              workEndMinute: 30,
+              lunchStartHour: 13,
+              lunchStartMinute: 0,
+              lunchEndHour: 14,
+              lunchEndMinute: 0,
+              payPeriodStartDate: '2025-08-07',
+              payPeriodLength: 14,
+              federalTaxRate: 12,
+              stateTaxRate: 5,
+              socialSecurityRate: 6.2,
+              medicareRate: 1.45,
+              otherDeductions: 0
+            };
           });
 
           const WORK_DAYS = [1, 2, 3, 4, 5];
